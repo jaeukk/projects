@@ -1,11 +1,9 @@
 # c++ codes 
 
+* ./cores/
+C++ implementations of neighbor-cell list method in a periodic fundamental cell.
 
-./cores/
-C++ implementations of near-cell list method in a periodic fundamental cell.
-
-
-./EXC/
+* ./EXC/
 A simple code to manage ConfigPack files.
 
 
