@@ -1,2 +1,5 @@
 ./*/obj/*
 *.txt
+PairStat/.vscode/c_cpp_properties.json
+PairStat/.vscode/launch.json
+.gitignore
