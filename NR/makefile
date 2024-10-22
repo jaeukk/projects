@@ -7,6 +7,8 @@
 # Email: phy000.kim@gmail.com
 #=============================
 
+core = /home/jaeukk/new_codes/c++/cores/
+
 MACHINE = HOME
 #MACHINE = DELLA
 
@@ -15,7 +17,7 @@ MACHINE = HOME
 #==============================
 ifeq ($(MACHINE), DELLA)
 #----- Directories ------------
-IDIR = /usr/local/include/# include directory
+IDIR = /usr/local/include/ -I$(core) # include directory
 ODIR = obj/# object directory
 #SDIR = ./# source directory
 #Idir = ./# header directory
@@ -35,14 +37,14 @@ endif
 ifeq ($(MACHINE), HOME)
 $(info	$(MACHINE))
 #----- Directories ------------
-IDIR = -I/usr/include/ -I/home/jaeukk/lib/gsl/include# include directory
-ODIR = ../obj/# object directory
+IDIR = -I/usr/include/ -I/home/jaeukk/lib/gsl/include -I$(core) # include directory
+ODIR = ./obj/# object directory
 #SDIR = ./# source directory
 #Idir = ./# header directory
 EXEdir = ./# directory for executables
 
 #	Executable
-TARGET = $(EXEdir)1D-rsa.out#NR_xbootstrap.out# output file name
+TARGET = $(EXEdir)NR.out#NR_xbootstrap.out# output file name
 
 #----- Flags and libraries -----
 GSLLIB = -L/home/jaeukk/lib/gsl/lib -lgsl -lgslcblas -lm
@@ -60,29 +62,24 @@ LFLAGS = -Wall -std=c++11 $(DEBUG) $(LIBS) -fopenmp -O3
 $(info	$(CFLAGS))
 $(info	$(LFLAGS))
 
-objs_core = GeometryVector.o PeriodicCellList.o RandomGenerator.o etc.o NumberVariance.o 
+objs_core = GeometryVector.o PeriodicCellList.o RandomGenerator.o etc.o 
 objs_netw = main.o NR_distribution.o
-objs_misc = GenerateConfigs.o HardSphereFluids.o RandomSequentialAddition.o
 
 DEPS = NR_distribution.h \
-  ../GeometryVector.h ../PeriodicCellList.h ../RandomGenerator.h \
-  ../etc.h ../NumberVariance.h \
-  ../GenerateConfigs.h ../HardSphereFluids.h ../RandomSequentialAddition.h
+  $(core)GeometryVector.h $(core)PeriodicCellList.h $(core)RandomGenerator.h \
+  $(core)etc.h 
 
 OBJ_core = $(patsubst %.o, $(ODIR)%.o, $(objs_core))
 OBJ_netw = $(patsubst %.o, $(ODIR)%.o, $(objs_netw))
-OBJ_misc = $(patsubst %.o, $(ODIR)%.o, $(objs_misc))
-OBJ = $(OBJ_core) $(OBJ_netw) $(OBJ_misc)
+OBJ = $(OBJ_core) $(OBJ_netw) 
 
 $(info	$(OBJ))
 
-SRC_core = $(patsubst %.o, ../%.cpp, $(objs_core))
+SRC_core = $(patsubst %.o, $(core)%.cpp, $(objs_core))
 SRC_netw = $(patsubst %.o, %.cpp, $(objs_netw))
-SRC_misc = $(patsubst %.o, ../%.cpp, $(objs_misc))
 
 $(info	$(SRC_core))
 $(info	$(SRC_netw))
-$(info	$(SRC_misc))
 
 #	echo 'core source files' $(SRC_core)
 #	echo 'FFH source files' $(SRC_FFH)
@@ -97,13 +94,10 @@ $(TARGET): $(OBJ)
 	$(CC) $(PREPROC) -o $@ $(OBJ) $(LFLAGS)
 
 # compilations...
-$(OBJ_core): $(ODIR)%.o: $(addprefix ../, %.cpp) $(DEPS)
+$(OBJ_core): $(ODIR)%.o: $(addprefix $(core), %.cpp) $(DEPS)
 	echo $@ $<  
 	$(CC) $(PREPROC) -o $@ $< $(CFLAGS)  
 
-$(OBJ_misc): $(ODIR)%.o: $(addprefix ../, %.cpp) $(DEPS)
-	echo $@ $<  
-	$(CC) $(PREPROC) -o $@ $< $(CFLAGS)  
 
 $(OBJ_netw): $(ODIR)%.o: $(notdir %.cpp) $(DEPS)
 	echo $@ $<

@@ -18,10 +18,10 @@
 #include <algorithm>
 #include <boost/math/distributions/normal.hpp>	//For Gaussian distribution.
 
-#include "../GeometryVector.h"
-#include "../PeriodicCellList.h"
-#include "../RandomGenerator.h"
-#include "../NumberVariance.h"
+#include <GeometryVector.h>
+#include <PeriodicCellList.h>
+#include <RandomGenerator.h>
+#include <etc.h>
 
 void WriteFunction(const std::vector<GeometryVector> & result, std::ostream & ofile, const std::vector<std::string> & fields);
 void WriteFunction(const std::vector<GeometryVector> & result, const std::string & OutFilePrefix, const std::vector<std::string> & fields);
@@ -404,6 +404,12 @@ double Compute_L2_norm(const std::vector<GeometryVector> & dist_test, const std:
  *  @return Kullback-Leibler distance.		*/
 double Compute_KullbackLeibler_distance(const std::vector<GeometryVector> & dist_test, 
 										const std::vector<GeometryVector> & dist_ref, double dx = 1.0);
+
+
+
+/** \brief	A function to give uncorrelated sampling points.*/
+std::vector<GeometryVector> GetSamplingPoints(DimensionType dim, size_t NumPoints, int seed);
+
 
 
 #endif

@@ -14,10 +14,11 @@
 #include <vector>
 #include <fstream>
 
-#include "../etc.h"
-#include "../GeometryVector.h"
-#include "../PeriodicCellList.h"
-#include "../RandomGenerator.h"
+#include <etc.h>
+#include <GeometryVector.h>
+#include <PeriodicCellList.h>
+#include <RandomGenerator.h>
+
 #include "NR_distribution.h"
 
 

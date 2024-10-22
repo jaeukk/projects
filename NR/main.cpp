@@ -16,11 +16,13 @@
 #include <vector>
 #include <fstream>
 
-#include "../etc.h"
-#include "../GeometryVector.h"
-#include "../PeriodicCellList.h"
-#include "../RandomGenerator.h"
-// #include "../GenerateConfigs.h"
+// In $core
+#include <etc.h>
+#include <GeometryVector.h>
+#include <PeriodicCellList.h>
+#include <RandomGenerator.h>
+size_t Verbosity = 2;
+
 
 #include "NR_distribution.h"
 
@@ -43,7 +45,7 @@ void Example_NV_Poisson(std::istream & ifile, std::ostream & ofile);
 void Example_NV_CubicLattice(std::istream & ifile, std::ostream & ofile);
 void Example_NV_RSA(std::istream & ifile, std::ostream & ofile);
 
-#include "../GenerateConfigs.h"
+//#include "../GenerateConfigs.h"
 
 /*	Analyze an ConfigurationPack with the LocalNumber class,
  * or load the data. */

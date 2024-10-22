@@ -1,4 +1,4 @@
-* Summary
+# Summary
 A code to compute a probability distribution $P[N(R)]$ associated with the number of points $N(R)$ within a spherical window of radius $R$ for an ensemble of point patterns.
 It stores all instances of $N(R)$ for a given value of $R$ in ".bin" files.
 
