@@ -7,9 +7,9 @@
 # Email: phy000.kim@gmail.com
 #=============================
 
-#MACHINE = HOME
+MACHINE = HOME
 #MACHINE = DELLA
-
+core = /home/jaeukk/new_codes/c++/cores/
 #==============================
 # DELLA
 #==============================
@@ -21,7 +21,7 @@ IDIR = -I/usr/local/include/ -I/usr/include/ -I$(core) #-I/home/jaeukk/install/i
 ODIR = obj/# object directory
 #SDIR = ./# source directory
 #Idir = ./# header directory
-EXEdir = ~/EXC/# directory for executables
+EXEdir = ./# directory for executables
 
 #	Executable
 TARGET = $(EXEdir)PairStat.out
@@ -44,7 +44,7 @@ IDIR = -I/usr/include/ -I/home/jaeukk/lib/gsl/include -I/usr/local/include/ -I$(
 ODIR = obj/# object directory
 #SDIR = ./# source directory
 #Idir = ./# header directory
-EXEdir = ~/EXC/# directory for executables
+EXEdir = ./# directory for executables
 
 #	Executable
 TARGET = $(EXEdir)PairStat.out

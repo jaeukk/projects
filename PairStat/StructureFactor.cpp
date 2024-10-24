@@ -143,13 +143,13 @@ void IsotropicStructureFactor(std::function<const Configuration(size_t i)> GetCo
 			temp.x[2] = (var > 0) ? std::sqrt(var) : 0;
 			
 			//CircularKMax
-			double k = KPrecision*(double)(iter - vSkBin.begin());// + 0.5);
+			double k = temp.x[0];//KPrecision*(double)(iter - vSkBin.begin());// + 0.5);
 			if (AverageOverCounts || (k > CircularKMax)){
 				temp.x[1] = iter->SumS / iter->Sum1;
 				temp.x[3] = std::sqrt((iter->SumS2 / (iter->Sum1) - temp.x[1] * temp.x[1]) / (iter->Sum1)); // I modified it
 			}
 			else{
-				double vd = 0.5*(HyperSphere_Volume(d, k+KPrecision) - HyperSphere_Volume(d, k)); //HyperSphere_SurfaceArea(d, k)*KPrecision/2.0;
+				double vd = 0.5*(HyperSphere_Volume(d, k+0.5*KPrecision) - HyperSphere_Volume(d, k-0.5*KPrecision)); //HyperSphere_SurfaceArea(d, k)*KPrecision/2.0;
 				temp.x[1] = iter->SumS * Omega / vd;
 				temp.x[2] = 0.5*KPrecision; //Omega / vd;
 				temp.x[3] = std::sqrt((iter->SumS2  - temp.x[1] * temp.x[1]) / (iter->Sum1) ) * Omega / vd * iter->Sum1;

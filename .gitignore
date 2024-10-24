@@ -4,3 +4,5 @@ error
 PairStat/.vscode/c_cpp_properties.json
 PairStat/.vscode/launch.json
 .gitignore
+PairStat/PairStat.out
+PairStat/test.sh
