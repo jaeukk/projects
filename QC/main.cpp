@@ -21,6 +21,9 @@ int main(int argc, char ** argv){
 	if (argc > 1 && strcmp (argv[1], "ConfigDiff") == 0){
 		ConfigDiff(ifile, ofile);
 	}	
+	else if (argc > 1 && strcmp (argv[1], "ConfigDiff2") == 0){
+		ConfigDiff2(ifile, ofile);
+	}	
 
 	return 0;	
 }
