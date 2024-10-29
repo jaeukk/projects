@@ -62,8 +62,8 @@ endif
 #==============================
 CC = g++
 DEBUG = -g
-CFLAGS = -Wall -std=c++11 $(DEBUG) $(IDIR) -c -fopenmp -O3
-LFLAGS = -Wall -std=c++11 $(DEBUG) $(LIBS) -fopenmp -O3
+CFLAGS = -Wall -std=c++11 $(DEBUG) $(IDIR) -c -fopenmp #-O3
+LFLAGS = -Wall -std=c++11 $(DEBUG) $(LIBS) -fopenmp #-O3
 
 $(info	$(CFLAGS))
 $(info	$(LFLAGS))

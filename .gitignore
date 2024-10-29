@@ -8,3 +8,7 @@ PairStat/PairStat.out
 PairStat/test.sh
 
 QC/temp/*
+QC/QC.out
+
+*/.vscode/*
+.vscode
