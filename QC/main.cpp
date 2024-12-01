@@ -8,7 +8,7 @@
 
 
 #include "ConfigDiff.h"
-
+#include "Perturbed.h"
 /* header fields in $(cores) */
 
 size_t Verbosity = 2;
@@ -23,7 +23,10 @@ int main(int argc, char ** argv){
 	}	
 	else if (argc > 1 && strcmp (argv[1], "ConfigDiff2") == 0){
 		ConfigDiff2(ifile, ofile);
-	}	
+	}
+	else if (argc > 1 && strcmp (argv[1], "Perturbed") == 0){
+		Perturbed(ifile, ofile);
+	}
 
 	return 0;	
 }

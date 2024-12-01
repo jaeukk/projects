@@ -71,7 +71,7 @@ $(info	$(LFLAGS))
 objs_core = GeometryVector.o RandomGenerator.o etc.o PeriodicCellList.o 
 objs_main = main.o #ConfigDiff.o
 
-DEPS = $(core)GeometryVector.h $(core)RandomGenerator.h $(core)etc.h $(core)PeriodicCellList.h ConfigDiff.h
+DEPS = $(core)GeometryVector.h $(core)RandomGenerator.h $(core)etc.h $(core)PeriodicCellList.h ConfigDiff.h Perturbed.h
 
 OBJ_core = $(patsubst %.o, $(ODIR)%.o, $(objs_core))
 OBJ_main = $(patsubst %.o, $(ODIR)%.o, $(objs_main))

@@ -161,7 +161,7 @@ int ConfigDiff2(std::istream & ifile, std::ostream & ofile){
 	size_t num_threads;
 	std::vector<GeometryVector> OnlyInRef, OnlyInComp;
 	std::string savename;
-	bool PrintDebugData = true;
+	bool PrintDebugData = false;
 	
 	std::string reference, comparator;
 
