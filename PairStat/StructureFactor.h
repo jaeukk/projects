@@ -32,7 +32,8 @@ double WeightedStructureFactor(const PeriodicCellList<std::complex<double>> & Co
 //( abs(k), S(k), KPrecision, \delta S(k) )
 //GetConfigsFunction should return configurations of index i when called
 //if SampleProbability is <1, then for any k point satisfying the above condition there is SampleProbability probability that it will be used to calculate S(k) and (1-SampleProbability) probability that it will not be used.
-void IsotropicStructureFactor(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfigs, double CircularKMax, double LinearKMax, std::vector<GeometryVector> & Results, double KPrecision=0.01, double SampleProbability=1.0, bool AverageOverCounts = true);
+void IsotropicStructureFactor(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfigs, double CircularKMax, double LinearKMax, std::vector<GeometryVector> & Results, double KPrecision=0.01, double SampleProbability=1.0, size_t option = 0);
+
 void IsotropicStructureFactor_weighted(std::function<const PeriodicCellList<std::complex<double>>(size_t i)> GetConfigsFunction, size_t NumConfigs, double CircularKMax, double LinearKMax, std::vector<GeometryVector> & Results, double KPrecision = 0.01, double SampleProbability = 1.0);
 //calculate structure factor of all ks in the cubic box [-limit, limit]^d.
 //dk : structure factors at ks in [k,k+dk]^d will be averaged: if dk = 1, structure factors are not averaged
