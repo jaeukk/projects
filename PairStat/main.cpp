@@ -230,7 +230,7 @@ int PairStatisticsCLI(){
 	bool RandomSampling = false;
 
 	std::vector<std::string> available_computations{
-		"g2Computation","Directionalg2Computation", "SkComputation", "NearestNeighborStatistics", "LocalNumberVariance", "CoordinationNumber"};
+		"g2Computation","Directionalg2Computation", "SkComputation", "NearestNeighborStatistics", "LocalNumberVariance", "CoordinationNumber", "CumulativeZ"};
 	std::vector<std::string> todo_computations{
 		"HpComputation",
 		"HvComputation",
@@ -336,7 +336,10 @@ int PairStatisticsCLI(){
 		{
 			vpComputations.push_back(new CoordinationNumberComputation(ifile, ofile));
 		}
-
+		else if (strcmp(tempstring, "CumulativeZ") == 0)
+		{
+			vpComputations.push_back( new CumulativeCoordinationNumberComputation(ifile, ofile) );
+		}
 
 
 		else if (strcmp(tempstring, "GetConfigsFunction") == 0)
@@ -364,8 +367,12 @@ int PairStatisticsCLI(){
 				//automatic sets NumConfig since Configuration Pack contains this information
 				else{
 					c.sequential_sampling = true;
-					NumConfig=c.p.NumConfig()-StartIdx;
-					std::cout<<"The config pack contains "<<NumConfig<<" configurations, set NumConfig to this value.\n";
+					size_t num = c.p.NumConfig()-StartIdx;
+					std::cout<<"The config pack contains "<<NumConfig<<" configurations.";
+					if (NumConfig > num){
+						std::cout << "Set NumConfig to this value because the former is greater than the latter.\n";
+						NumConfig= num;
+					}
 				}
 				GetConfigsFunction = c;
 
@@ -443,6 +450,7 @@ int PairStatisticsCLI(){
 		{
 			vpComputations.push_back( new LocalNumberVariance(ifile, ofile) );
 		}
+		
 /* 		else if (strcmp(tempstring, "NearestNeighborComputation") == 0)
 		{//for historical reasons
 			vpComputations.push_back( new HpComputation(ifile, ofile) );

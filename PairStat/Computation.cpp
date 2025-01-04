@@ -518,7 +518,7 @@ void SkComputation::Compute(std::function<const Configuration(size_t i)> GetConf
 {
 	omp_set_num_threads(this->num_threads);
 	result.clear();
-	::IsotropicStructureFactor(GetConfigsFunction, NumConfig, CircularKMax, LinearKMax, result, KPrecision, SampleProbability, ! AverageOverSurface);
+	::IsotropicStructureFactor(GetConfigsFunction, NumConfig, CircularKMax, LinearKMax, result, KPrecision, SampleProbability, average_option);
 }
 
 void SkComputation::Write(const std::string OutputPrefix)
@@ -539,8 +539,12 @@ void SkComputation::ProcessAdditionalOption(const std::string & option, std::ist
 	if (option == "SampleProbability")
 		//default=1, set>1 to get better x resolution, <1 to get better y resolution
 		input >> SampleProbability;
-	if (option == "AverageOverSurface")
-		AverageOverSurface = true;
+	else if (option == "AverageOverCounts")
+		average_option = 0;
+	else if (option == "AverageOverSurface")
+		average_option = 1;
+	else if (option == "BraggPeaks")
+		average_option = 2;
 	else
 		output << "Unrecognized command!\n";
 }
@@ -810,6 +814,30 @@ void CoordinationNumberComputation::Plot(const std::string OutputPrefix, const s
 }
 
 void CoordinationNumberComputation::ProcessAdditionalOption(const std::string & option, std::istream & input, std::ostream & output)
+{
+	output << "Unrecognized command!\n";
+}
+
+void CumulativeCoordinationNumberComputation::Compute(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfig)
+{
+	CumulativeCoordinationNumber( GetConfigsFunction, NumConfig, rmin, rmax, dr, result);
+}
+
+void CumulativeCoordinationNumberComputation::Write(const std::string OutputPrefix)
+{
+	std::vector<std::string> fields;
+	fields.emplace_back("#Z(r) = cumulative coordination number up to r");	
+	fields.emplace_back("#r\t#Z(r)\t#err. Z ");	
+	std::cout<<"Z(r):\n";
+	WriteFunction(result, (OutputPrefix+std::string("_Zofr")).c_str(), fields);
+}
+
+void CumulativeCoordinationNumberComputation::Plot(const std::string OutputPrefix, const std::string &Title)
+{
+	PlotFunction_Grace(result, OutputPrefix+std::string("_Zofr"), "r", "Cumulative Coordination number", Title);
+}
+
+void CumulativeCoordinationNumberComputation::ProcessAdditionalOption(const std::string &option, std::istream &input, std::ostream &output)
 {
 	output << "Unrecognized command!\n";
 }

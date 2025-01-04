@@ -114,7 +114,7 @@ public:
 	std::vector<GeometryVector> result;
 	double CircularKMax, LinearKMax, KPrecision;
 	double SampleProbability;
-	bool AverageOverSurface = false;
+	size_t average_option = 0;
 	
 	SkComputation(std::istream & ifile, std::ostream & ofile)
 	{
@@ -167,12 +167,15 @@ class CoordinationNumberComputation : public Computation
 public:
 	std::vector<GeometryVector> result;
 	double rmin, rmax;
+	int bins;
 	
 	CoordinationNumberComputation(std::istream & ifile, std::ostream & ofile)
 	{
-		ofile<<"Coordination numbers between rmin and rmax";
+		ofile<<"Coordination numbers between rmin and rmax = ";
 		ifile>>rmin;
 		ifile>>rmax;
+		ofile<<"Number of bins = ";
+		ifile>>bins;
 	}
 
 	virtual void Compute(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfig);
@@ -181,6 +184,30 @@ public:
 	virtual void ProcessAdditionalOption(const std::string & option, std::istream & input, std::ostream & output);
 
 	virtual ~CoordinationNumberComputation()
+	{}
+};
+
+class CumulativeCoordinationNumberComputation : public Computation
+{
+public:
+	std::vector<GeometryVector> result;
+	double rmin, rmax, dr;
+	
+	CumulativeCoordinationNumberComputation(std::istream & ifile, std::ostream & ofile)
+	{
+		ofile<<"Cumulative Coordination numbers between rmin and rmax = ";
+		ifile>>rmin;
+		ifile>>rmax;
+		ofile<<"dr = ";
+		ifile>>dr;
+	}
+
+	virtual void Compute(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfig);
+	virtual void Write(const std::string OutputPrefix);
+	virtual void Plot(const std::string OutputPrefix, const std::string & Title);
+	virtual void ProcessAdditionalOption(const std::string & option, std::istream & input, std::ostream & output);
+
+	virtual ~CumulativeCoordinationNumberComputation()
 	{}
 };
 
