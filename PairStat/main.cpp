@@ -368,8 +368,13 @@ int PairStatisticsCLI(){
 				else{
 					c.sequential_sampling = true;
 					size_t num = c.p.NumConfig()-StartIdx;
-					std::cout<<"The config pack contains "<<NumConfig<<" configurations.";
-					if (NumConfig > num){
+					std::cout<<"The config pack contains "<<c.p.NumConfig()<<" configurations.";
+
+					if (NumConfig == 0){
+						std::cout << "Set NumConfig to this value because the former is undefined.\n";
+						NumConfig= num;
+					}
+					else if (NumConfig > num){
 						std::cout << "Set NumConfig to this value because the former is greater than the latter.\n";
 						NumConfig= num;
 					}

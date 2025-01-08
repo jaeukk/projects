@@ -48,12 +48,14 @@ double WeightedStructureFactor(const PeriodicCellList<std::complex<double>> & Co
 
 
 
-void IsotropicStructureFactor(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfigs, double CircularKMax, double LinearKMax, std::vector<GeometryVector> & Results, double KPrecision, double SampleProbability, size_t option)
+void IsotropicStructureFactor(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfigs, double CircularKMax, double LinearKMax, std::vector<GeometryVector> & Results, double KPrecision, double SampleProbability, size_t option, double CircularKMin)
 {
 	Results.clear();
-	if(!(CircularKMax>0))
+	if(!(CircularKMax > 0))
 		return;
-	if(!(LinearKMax>0))
+	if(!(LinearKMax > 0))
+		return;
+	if(CircularKMin > CircularKMax)
 		return;
 
 	if (KPrecision == 0.0)
@@ -103,10 +105,10 @@ void IsotropicStructureFactor(std::function<const Configuration(size_t i)> GetCo
 					SameBasis=false;
 
 			if(SameBasis==false)
-				ks=GetKs(CurrentConfig, CircularKMax, LinearKMax, SampleProbability);
+				ks=GetKs(CurrentConfig, CircularKMax, LinearKMax, SampleProbability, true, CircularKMin);
 		}
 		else{
-			ks = GetKs(CurrentConfig, CircularKMax, LinearKMax, SampleProbability);
+			ks = GetKs(CurrentConfig, CircularKMax, LinearKMax, SampleProbability, false, CircularKMin);
 			d = CurrentConfig.GetDimension();
 			V = CurrentConfig.PeriodicVolume();
 			if (option == 2){
@@ -160,11 +162,13 @@ void IsotropicStructureFactor(std::function<const Configuration(size_t i)> GetCo
 
 	/* delete unncessary bins */
 	if (option == 0 || option == 1){
-		for (auto iter = vSkBin.begin(); iter != vSkBin.end(); iter ++ ){
-			if (iter->Sum1 != 0.0)
-			{
-				vSkBin.erase(iter);
+		std::cout << "Delete empty bins " << std::endl;
+		auto iter = vSkBin.begin();
+		while(iter != vSkBin.end()){
+			if (iter -> Sum1 < 1.0){
+				iter = vSkBin.erase(iter);
 			}
+			else iter ++ ;
 		}
 	}
 

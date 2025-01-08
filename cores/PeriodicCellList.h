@@ -1671,10 +1671,13 @@ void ReadConfiguration(SpherePacking & conf, const std::string & InputName);
 /** Find all reciprocal lattice vectors (wavevectors) of a given periodic simulation box.
  *  It is modified to deal with errors.
  *	@param tempList	A periodic simulation box.
- *	@param (CircularKMax, LinearKMax)	Find all reciprocal lattice vectors (excluding parity pairs) whose magnitude is smaller than CircularKMax,
-										and then fina all integral multiples of the aforementioned vectors whose magnitudes are smaller than LinearKMax.
- *	@param SampleProbability	When <1, randomly choose wavevectors within CircularKMax by the prescribed probability.*/
-std::vector<GeometryVector> GetKs(const PeriodicCellList<Empty> & tempList, double CircularKMax, double LinearKMax, double SampleProbability = 1.0, bool use_iteratethrough = true);
+ *	@param (CircularKMax, LinearKMax)	Find all reciprocal lattice vectors (excluding parity pairs) whose magnitude is smaller than CircularKMax but greater than CircularKMin, and then fina all integral multiples of the aforementioned vectors whose magnitudes are smaller than LinearKMax.
+ *	@param SampleProbability	When <1, randomly choose wavevectors within CircularKMax by the prescribed probability.
+ *	@param use_iteratethrough	True = use IterateThrough() function, which may surge memory use. 
+ *	@param CircularKMin			0 by default.  
+ */
+
+std::vector<GeometryVector> GetKs(const PeriodicCellList<Empty> & tempList, double CircularKMax, double LinearKMax, double SampleProbability = 1.0, bool use_iteratethrough = true, double CircularKMin = 0.0);
 
 
 

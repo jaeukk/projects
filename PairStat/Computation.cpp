@@ -516,9 +516,10 @@ void Directionalg2Computation::Write(const std::string OutputPrefix)
  * --------------------------------- */
 void SkComputation::Compute(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfig)
 {
+	std::cout << "Compute from " << CircularKMin << " to " << LinearKMax <<"\n";
 	omp_set_num_threads(this->num_threads);
 	result.clear();
-	::IsotropicStructureFactor(GetConfigsFunction, NumConfig, CircularKMax, LinearKMax, result, KPrecision, SampleProbability, average_option);
+	::IsotropicStructureFactor(GetConfigsFunction, NumConfig, CircularKMax, LinearKMax, result, KPrecision, SampleProbability, average_option, CircularKMin);
 }
 
 void SkComputation::Write(const std::string OutputPrefix)
@@ -545,6 +546,9 @@ void SkComputation::ProcessAdditionalOption(const std::string & option, std::ist
 		average_option = 1;
 	else if (option == "BraggPeaks")
 		average_option = 2;
+	else if (option == "CircularKMin")
+		//default=0, set >0 to exclude some wavevectors smaller than this value.
+		input >> CircularKMin;
 	else
 		output << "Unrecognized command!\n";
 }

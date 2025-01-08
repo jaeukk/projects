@@ -1552,7 +1552,7 @@ void ReadConfiguration(SpherePacking & conf, const std::string & InputName) {
 }
 
 
-std::vector<GeometryVector> GetKs(const PeriodicCellList<Empty> & tempList, double CircularKMax, double LinearKMax, double SampleProbability, bool use_iteratethrough)
+std::vector<GeometryVector> GetKs(const PeriodicCellList<Empty> & tempList, double CircularKMax, double LinearKMax, double SampleProbability, bool use_iteratethrough, double CircularKMin)
 {
 	//Exclude probablematic cases.
 	if (CircularKMax <= 0.0) {
@@ -1582,10 +1582,11 @@ std::vector<GeometryVector> GetKs(const PeriodicCellList<Empty> & tempList, doub
 		reciprocal.Insert(Empty(), GeometryVector(dim));
 		std::vector<GeometryVector> ks;
 		std::vector<GeometryVector> preKs;
+		double KMin2 = CircularKMin*CircularKMin;
 
 		if (use_iteratethrough)
 		{
-			reciprocal.IterateThroughNeighbors(GeometryVector(dim), CircularKMax, [&ks, &dim](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t SourceAtom)->void{
+			reciprocal.IterateThroughNeighbors(GeometryVector(dim), CircularKMax, [&ks, &dim, &KMin2](const GeometryVector & shift, const GeometryVector & LatticeShift, const signed long * PeriodicShift, const size_t SourceAtom)->void{
 			bool Trivial = true;
 			for (DimensionType d = 0; d<dim; d++)
 			{
@@ -1600,7 +1601,7 @@ std::vector<GeometryVector> GetKs(const PeriodicCellList<Empty> & tempList, doub
 					break;
 				}
 			}
-			if (!Trivial)
+			if (!Trivial && (shift.Modulus2() > KMin2))
 				ks.push_back(shift);
 			});
 		}
@@ -1645,7 +1646,7 @@ std::vector<GeometryVector> GetKs(const PeriodicCellList<Empty> & tempList, doub
 						k = k + PeriodicShift[d] * bs[d];
 					} 
 					double k2 = k.Modulus2();
-					if ((k2 < K2) && (k2 > 0.0))
+					if ((k2 < K2) && (k2 > KMin2))
 						ks.emplace_back(k);
 				}
 
@@ -1711,14 +1712,56 @@ std::vector<GeometryVector> GetKs(const PeriodicCellList<Empty> & tempList, doub
 	}
 	else
 	{
+		/* 1D case */
+		//std::cout<< "GetKs(...):: 1D case. \n";
 		GeometryVector b = tempList.GetReciprocalBasisVector(0);
-		for (double i = 1.0;; i += 1.0)
-		{
-			GeometryVector k = i*b;
-			if (k.x[0] > LinearKMax)
-				break;
-			if (SampleProbability >= 1.0 || gen.RandomDouble()<SampleProbability)
-				results.push_back(k);
+		if (CircularKMin <= 0.0){
+			for (double i = 1.0;; i += 1.0)
+			{
+				GeometryVector k = i*b;
+				if (k.x[0] > LinearKMax)
+					break;
+				if (SampleProbability >= 1.0 || gen.RandomDouble()<SampleProbability)
+					results.push_back(k);
+			}
+		}
+		else{
+			/* search wavevectors between CircularKMin and CircularKMax */
+			//std::cout<< "GetKs(...):: CircularKMin is positive. \n";
+			size_t num_inside_circular = 0;
+			for (double i = 1.0;; i += 1.0)
+			{
+				GeometryVector k = i*b;
+				if (k.x[0] > CircularKMax)
+					break;
+				if (k.x[0] > CircularKMin){
+					if (SampleProbability >= 1.0 || gen.RandomDouble()<SampleProbability)
+						results.push_back(k);
+					num_inside_circular ++;
+				}
+			}
+			
+			if (results.size() > 0){
+				/* consider integer multiples in results. */
+				bool OutsideRange = false;
+				for (double i = 2.0;; i+= 1.0){
+					for (size_t j = 0; j<num_inside_circular; j++){
+						GeometryVector k = i * results[j];
+						if (k.x[0] > LinearKMax){
+							OutsideRange = true;
+							break;
+						}
+						if (SampleProbability >= 1.0 || gen.RandomDouble()<SampleProbability)
+							results.push_back(k);
+					}
+					if (OutsideRange)
+						break;
+				}
+			}
+			else{
+				std::cerr << "GetKs(...):: There is no wavevector bewteen CircularKMin and CircularKMax " <<std::endl;
+			}
+
 		}
 	}
 	return results;

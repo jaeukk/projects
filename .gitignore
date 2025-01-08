@@ -6,6 +6,9 @@ PairStat/.vscode/launch.json
 .gitignore
 PairStat/PairStat.out
 PairStat/test.sh
+PairStat/*.txt
+
+configs/*
 
 QC/temp/*
 QC/QC.out

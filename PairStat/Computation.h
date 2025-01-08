@@ -112,7 +112,7 @@ class SkComputation : public Computation
 {
 public:
 	std::vector<GeometryVector> result;
-	double CircularKMax, LinearKMax, KPrecision;
+	double CircularKMax, LinearKMax, KPrecision, CircularKMin = 0.0;
 	double SampleProbability;
 	size_t average_option = 0;
 	
