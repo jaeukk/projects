@@ -160,24 +160,32 @@ void IsotropicStructureFactor(std::function<const Configuration(size_t i)> GetCo
 		pd++;
 	}
 
-	/* delete unncessary bins */
-	if (option == 0 || option == 1){
-		std::cout << "Delete empty bins " << std::endl;
-		auto iter = vSkBin.begin();
-		while(iter != vSkBin.end()){
-			if (iter -> Sum1 < 1.0){
-				iter = vSkBin.erase(iter);
-			}
-			else iter ++ ;
-		}
-	}
+	// /* delete unncessary bins */
+	// if (option == 0 || option == 1){
+	// 	std::cout << "Delete empty bins " << std::endl;
+	// 	auto iter = vSkBin.begin();
+	// 	while(iter != vSkBin.end()){
+	// 		if (iter -> Sum1 < 1.0){
+	// 			iter = vSkBin.erase(iter);
+	// 		}
+	// 		else iter ++ ;
+	// 	}
+	// }
 
 	double Omega = std::pow(2.*pi, d)/V/NumConfigs;
-	Results.resize(vSkBin.size(), GeometryVector(int(4)));
-	#pragma omp parallel for schedule(guided)
+	if  (option == 0 || option == 1){
+		// when wavenumbers are binned.
+		Results.reserve(NumBin);
+	}
+	else {
+		//Results.resize(vSkBin.size(), GeometryVector(int(4)));
+		Results.reserve(vSkBin.size());
+	}
+
+	//#pragma omp parallel for schedule(guided)
 	for (int i = 0; i < vSkBin.size(); i++ ){
 		auto iter = vSkBin.begin() + i;
-		
+		if (iter->Sum1 > 0.0){
 			GeometryVector temp(4);
 			//temp.x[0] = std::sqrt(iter->SumK2 / iter->Sum1);
 			//temp.x[1] = iter->SumS / iter->Sum1;
@@ -193,6 +201,8 @@ void IsotropicStructureFactor(std::function<const Configuration(size_t i)> GetCo
 				/* average over number of wavevectors */
 				temp.x[1] = iter->SumS / iter->Sum1;
 				temp.x[3] = std::sqrt((iter->SumS2 / (iter->Sum1) - temp.x[1] * temp.x[1]) / (iter->Sum1)); // I modified it
+
+				Results.push_back(temp);
 			}
 			else if (option == 1){
 				/* average over volume in reciprocal space*/
@@ -200,14 +210,18 @@ void IsotropicStructureFactor(std::function<const Configuration(size_t i)> GetCo
 				temp.x[1] = iter->SumS * Omega / vd;
 				temp.x[2] = 0.5*KPrecision; //Omega / vd;
 				temp.x[3] = std::sqrt((iter->SumS2  - temp.x[1] * temp.x[1]) / (iter->Sum1) ) * Omega / vd * iter->Sum1;
+
+				Results.push_back(temp);
 			}
 			else if (option == 2){
 				/* Bragg peaks */
 				temp.x[1] = iter->SumS / iter->Sum1;
 				temp.x[3] = iter->Sum1; //std::sqrt((iter->SumS2 / (iter->Sum1) - temp.x[1] * temp.x[1]) / (iter->Sum1));
+
+				Results.push_back(temp);
 			}
-			Results[i] = GeometryVector(temp);
-				 
+			
+		}
 	}
 
 	if (option == 2){
