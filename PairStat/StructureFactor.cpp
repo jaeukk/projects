@@ -160,18 +160,6 @@ void IsotropicStructureFactor(std::function<const Configuration(size_t i)> GetCo
 		pd++;
 	}
 
-	// /* delete unncessary bins */
-	// if (option == 0 || option == 1){
-	// 	std::cout << "Delete empty bins " << std::endl;
-	// 	auto iter = vSkBin.begin();
-	// 	while(iter != vSkBin.end()){
-	// 		if (iter -> Sum1 < 1.0){
-	// 			iter = vSkBin.erase(iter);
-	// 		}
-	// 		else iter ++ ;
-	// 	}
-	// }
-
 	double Omega = std::pow(2.*pi, d)/V/NumConfigs;
 	if  (option == 0 || option == 1){
 		// when wavenumbers are binned.
