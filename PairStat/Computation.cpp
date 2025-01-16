@@ -708,7 +708,7 @@ void LocalNumberVariance::Compute(std::function<const Configuration(size_t i)> G
 		/* Window centers = particle centers */
 		this->result.clear();
 
-		std::cout<< "\nComputing Number Variance (Use particle centers): ";
+		std::cout<< "\nComputing MC Number Variance (Use particle centers): ";
 		progress_display pd(NumConfig);
 		for (int i = 0; i < NumConfig; i++){
 			Configuration c = GetConfigsFunction(i);

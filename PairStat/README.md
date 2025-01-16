@@ -19,8 +19,30 @@
 
 # Sample Execution & Output
 
-	If run without command line arguments, using
+1. Compute structure factor.
+	omp_threads=1
+	config="GetConfigsFunction ReadConfigPack ../configs/integer-lattice"
+	OutputName="Z1-test"
 
-	
+./PairStat.out <<< "NumThread $omp_threads
+	$config
+	SkComputation 6.3 100 0.01
+	BraggPeaks 
+	CircularKMin 6.25
+	OutputPrefix $OutputName
+	Calculation
+	Exit
+	"
+
+
+	./PairStat.out <<< "NumThread 1
+	GetConfigsFunction ReadConfigPack ../configs/integer-lattice
+	SkComputation 6.3 100 0.001 
+	CircularKMin 6.2 
+	BraggPeaks
+	OutputPrefix ./Z1-test
+	Calculation
+	Done
+	"
 
 	

@@ -23,12 +23,10 @@
 #include <PeriodicCellList.h>
 #include <RandomGenerator.h>
 
-/* ------------------------
-	distance functions r(x) for various window shapes.
 
-	x = displacement vector from the window center to the position of a particle.
-	r (x) = the defined distance.
-	------------------------*/
+/// @brief Function to compute the smallest radius for a spherical 'window' to contain a displacement vector from the origin. This function allows one to implement arbitrarily shaped windows.
+/// @param delta_x displacement vector from the window center to the position of a particle.
+/// @return the defined distance.
 inline double radius_in_Sphere (const GeometryVector & delta_x){
 	return std::sqrt(delta_x.Modulus2());
 }
