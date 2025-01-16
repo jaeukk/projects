@@ -13,5 +13,8 @@ configs/*
 QC/temp/*
 QC/QC.out
 
+CCOptimization/*.out
+CCOptimization/log*
+
 */.vscode/*
 .vscode
