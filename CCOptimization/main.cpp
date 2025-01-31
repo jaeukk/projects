@@ -110,6 +110,7 @@ int GetCCO(int argc, char ** argv){
 	size_t max_steps = 10000, beg_idx = 0;
 	int seed = 0;
 	std::string algorithm = "LBFGS";
+	std::string vtilde = "flat";
 	if (argc > 1){
 		timelimit_in_hour = (time_t)std::atoi(argv[1]);
 		if (argc > 2){
@@ -133,6 +134,9 @@ int GetCCO(int argc, char ** argv){
 		if (argc > 8){
 			MD_Temperature = std::stof(argv[8]);
 		}
+		if (argc > 9){
+			vtilde = std::string(argv[9]);
+		}
 	}
 	//TODO: Change to use \chi as input parameters
 	RandomGenerator rngGod(seed), rng(0);
@@ -143,6 +147,7 @@ int GetCCO(int argc, char ** argv){
 	ofile << "Verbosity is "<< Verbosity <<std::endl;
 	ofile << "Numerical optimizer is "<< algorithm <<std::endl;
 	ofile << "Temperature is "<< MD_Temperature <<std::endl;
+	ofile << "Shape of potential is "<< vtilde <<std::endl;
 
 	nlopt_srand(999);
 	auto start = std::time(nullptr);
@@ -151,7 +156,7 @@ int GetCCO(int argc, char ** argv){
 	
 	{/* a piece of code to compute the stealthy (hyperuniform) packing at unit number density ... */
 		double K1, K2, val, chi = 0, L = 10, sigma, phi = 0.1, S0=0.0;
-
+		std::vector<double> param_vtilde;	// parameter used in vtilde functions
 		DimensionType dim = 2;
 		size_t num = L * L*L, numConfig = 300, num_in_load = 0, numEquilSamples = 500, num_in_save = 0;
 
@@ -224,14 +229,37 @@ int GetCCO(int argc, char ** argv){
 
 			if (S0 == 0.0)
 			{
-				std::vector<double> vals;
-				vals.emplace_back(1.0);
+				std::vector<double> vals;	vals.emplace_back(0);
+				std::function<double (double k)> v;
+				if (vtilde.compare("flat") == 0){
+					ofile << "vtilde function = flat (by default)\n";
+					v = [](double k) -> double { return 1.0; };
+				}
+				else if (vtilde.compare("overlap") == 0){
+					ofile << "vtilde function = overlap function\n";
+					param_vtilde.emplace_back(k2);
+					v = [&dim, &param_vtilde](double k) -> double { return alpha(dim, k/(param_vtilde[0]));};
+				}
+				else if (vtilde.compare("power-law") == 0){
+					double m;
+					ofile << "vtilde function = power-law function \n";
+					ofile << "exponent? = ";	ifile >> m;	
+					param_vtilde.emplace_back(k2);
+					param_vtilde.emplace_back(m);
+					v = [&param_vtilde](double k) -> double { return std::pow(1. - k/param_vtilde[0], param_vtilde[1]);};
+				}
+
 				double K1_modulus = k1 * k1;
 				std::vector<GeometryVector> ks_temp = GetKs(Config, k2, k2, 1);
 				for (auto k = ks_temp.begin(); k != ks_temp.end(); k++) {
 					if (k->Modulus2() > K1_modulus) {
+						vals[0] = v(std::sqrt(k->Modulus2()));
 						potential->CCPotential->AddConstraint(*k, vals);
 						chi++;
+
+						if (Verbosity > 3){
+							ofile << std::sqrt(k->Modulus2()) << "\t" << vals[0] <<"\n";
+						}
 					}
 					
 				}
@@ -369,49 +397,51 @@ int GetCCO(int argc, char ** argv){
 
 		// Some basic analyses
 		/*Compute the nearest distance of each config. */
-		ConfigurationPack ConfigSet;
-		if (strcmp (mode, "MD") == 0){
-			ConfigSet.Open((savename ).c_str());
-		}
-		else if (strcmp (mode, "ground") == 0){
-			ConfigSet.Open((savename + "_Success").c_str());
-		}
-		double rmin = L;
-		{
-			for (int i = 0; i < ConfigSet.NumConfig(); i++) {
-				Configuration x = ConfigSet.GetConfig(i);
-				double rm = L;
-				for (size_t j = 0; j < x.NumParticle(); j++) {
-					double temp = x.NearestParticleDistance(j);
-					rm = (temp < rm) ? temp : rm;
+		if (false){
+			ConfigurationPack ConfigSet;
+			if (strcmp (mode, "MD") == 0){
+				ConfigSet.Open((savename ).c_str());
+			}
+			else if (strcmp (mode, "ground") == 0){
+				ConfigSet.Open((savename + "_Success").c_str());
+			}
+			double rmin = L;
+			{
+				for (int i = 0; i < ConfigSet.NumConfig(); i++) {
+					Configuration x = ConfigSet.GetConfig(i);
+					double rm = L;
+					for (size_t j = 0; j < x.NumParticle(); j++) {
+						double temp = x.NearestParticleDistance(j);
+						rm = (temp < rm) ? temp : rm;
+					}
+					ofile << i << ":\t" << rm << std::endl;
 				}
-				ofile << i << ":\t" << rm << std::endl;
 			}
-		}
 
-		auto getC = [&rmin, &ConfigSet](size_t i) ->Configuration {
-			Configuration c = ConfigSet.GetConfig(i);
-			double R = rmin;
-			for (size_t j = 0; j < c.NumParticle(); j++) {
-				double temp = c.NearestParticleDistance(j);
-				R = (temp < R) ? temp : R;
-			}
-			rmin = (R < rmin) ? R : rmin;
-			return c;
-		};
+			auto getC = [&rmin, &ConfigSet](size_t i) ->Configuration {
+				Configuration c = ConfigSet.GetConfig(i);
+				double R = rmin;
+				for (size_t j = 0; j < c.NumParticle(); j++) {
+					double temp = c.NearestParticleDistance(j);
+					R = (temp < R) ? temp : R;
+				}
+				rmin = (R < rmin) ? R : rmin;
+				return c;
+			};
 
-		/*Compute g2 function*/
-		std::vector<GeometryVector> g2;
-		numConfig = ConfigSet.NumConfig();
-		IsotropicTwoPairCorrelation(getC, numConfig, std::min(0.2 * L, 5.0) , g2);
-		WriteFunction(g2, (savename + "_g2").c_str());
-		phi = 1.0*HyperSphere_Volume(dim, rmin / 2.0);
-		ofile << "max packing fraction is " << phi << std::endl;
+			/*Compute g2 function*/
+			std::vector<GeometryVector> g2;
+			numConfig = ConfigSet.NumConfig();
+			IsotropicTwoPairCorrelation(getC, numConfig, std::min(0.2 * L, 5.0) , g2);
+			WriteFunction(g2, (savename + "_g2").c_str());
+			phi = 1.0*HyperSphere_Volume(dim, rmin / 2.0);
+			ofile << "max packing fraction is " << phi << std::endl;
 
-		/*Compute the structure factsor*/
-		std::vector<GeometryVector> Sk;
-		IsotropicStructureFactor(getC, numConfig, 0.2, 1, Sk);
-		WriteFunction(Sk, (savename + "_Sk").c_str());		
+			/*Compute the structure factsor*/
+			std::vector<GeometryVector> Sk;
+			IsotropicStructureFactor(getC, numConfig, 0.2, 1, Sk);
+			WriteFunction(Sk, (savename + "_Sk").c_str());
+		}		
 	}
 
 	return 0;
@@ -528,6 +558,10 @@ int CollectiveCoordinateMultiRun(Configuration * pConfig, Potential * pPotential
 			RelaxStructure_SteepestDescent(result, *pPotential, 0.0, 0, 0.0, max_num);
 		else if(AlgorithmName=="MINOP")
 			RelaxStructure_MINOP_withoutPertubation(result, *pPotential, 0.0, 0, 0.0, max_num);
+		else {
+			std::cout << "Algorithm is undefined!!"<< std::endl;
+			return -1;
+		}
 		AfterRelaxPack.AddConfig(result);
 		pPotential->SetConfiguration(result);
 		double E=pPotential->Energy();
