@@ -101,52 +101,43 @@ public:
 // compute ground states of stealthy hyperuniform potentials + soft-core repulsions.
 int GetCCO(int argc, char ** argv){
 	char tempstring[1000] = {};
-	char tempstring2[300] = {};
+	std::string tempstring2;
 	std::istream & ifile = std::cin;
 	std::ostream & ofile = std::cout;
 
 	size_t timelimit_in_hour = 144;
-	double tolerance = 1e-14, MD_Temperature = -1.0;
-	size_t max_steps = 10000, beg_idx = 0;
+	size_t beg_idx = 0;
 	int seed = 0;
-	std::string algorithm = "LBFGS";
 	std::string vtilde = "flat";
 	if (argc > 1){
 		timelimit_in_hour = (time_t)std::atoi(argv[1]);
 		if (argc > 2){
-			tolerance = std::stof(argv[2]);
+			seed = std::atoi(argv[2]);
 		}
 		if (argc > 3){
-			max_steps = std::atoi(argv[3]);
+			beg_idx = std::atoi(argv[3]);
 		}
 		if (argc > 4){
-			seed = std::atoi(argv[4]);
+			Verbosity = (size_t) (std::atoi(argv[4]));
 		}
 		if (argc > 5){
-			beg_idx = std::atoi(argv[5]);
+			vtilde = std::string(argv[5]);
 		}
-		if (argc > 6){
-			Verbosity = (size_t) (std::atoi(argv[6]));
-		}
-		if (argc > 7){
-			algorithm = std::string(argv[7]);
-		}
-		if (argc > 8){
-			MD_Temperature = std::stof(argv[8]);
-		}
-		if (argc > 9){
-			vtilde = std::string(argv[9]);
-		}
+		// if (argc > 2){
+		// 	tolerance = std::stof(argv[2]);
+		// }
+		// if (argc > 3){
+		// 	max_steps = std::atoi(argv[3]);
+		// }
+		// if (argc > 7){
+		// 	algorithm = std::string(argv[7]);
+		// }
 	}
 	//TODO: Change to use \chi as input parameters
 	RandomGenerator rngGod(seed), rng(0);
 	ofile << "Time limit for simulations is "<< timelimit_in_hour << " hours\n";
-	ofile << "Energy tolerance is "<< tolerance <<std::endl;
-	ofile << "Max. steps of evaluations is "<< max_steps <<std::endl;
 	ofile << "Random seed is "<< seed <<std::endl;
 	ofile << "Verbosity is "<< Verbosity <<std::endl;
-	ofile << "Numerical optimizer is "<< algorithm <<std::endl;
-	ofile << "Temperature is "<< MD_Temperature <<std::endl;
 	ofile << "Shape of potential is "<< vtilde <<std::endl;
 
 	nlopt_srand(999);
@@ -158,12 +149,12 @@ int GetCCO(int argc, char ** argv){
 		double K1, K2, val, chi = 0, L = 10, sigma, phi = 0.1, S0=0.0;
 		std::vector<double> param_vtilde;	// parameter used in vtilde functions
 		DimensionType dim = 2;
-		size_t num = L * L*L, numConfig = 300, num_in_load = 0, numEquilSamples = 500, num_in_save = 0;
+		size_t num = L * L*L, numConfig = 300, num_in_load = 0, num_in_save = 0;
 
 		int num_threads = 4;
 		ofile << "Dimension = "; ifile >> dim;
-		ofile << "K1 = ";	ifile >> K1;
-		ofile << "K2 = ";	ifile >> K2;
+		ofile << "K1a = ";	ifile >> K1;
+		ofile << "K2a = ";	ifile >> K2;
 		ofile << "S0 = ";	ifile >> S0;
 		ofile << "val = ";	ifile >> val;
 		ofile << "sigma = "; ifile >> sigma;
@@ -171,7 +162,6 @@ int GetCCO(int argc, char ** argv){
 		ofile << "# threads = "; ifile >> num_threads;
 		ofile << "num particle = "; ifile >>num; 
 		ofile << "num configs = "; ifile >> numConfig;
-		ofile << "num equil. sample = "; ifile >> numEquilSamples;
 		L = pow(num, 1.0/(double)dim);	
 		double a = pow(phi/(HyperSphere_Volume(dim, 1.0)), 1.0/(double)dim);
 		
@@ -288,16 +278,52 @@ int GetCCO(int argc, char ** argv){
 
 		if (strcmp (mode, "MD") == 0)
 		{
+			/* NVT MD simulations */
+			double MDTimeStep = 0.01, MD_Temperature = -1.0;
+			size_t MDStepPerSample = 100000; 
+			size_t numEquilSamples = 500;
+			bool MDAutoTimeStep = false;
 			{
 				ConfigurationPack save_(savename);				
 				num_in_save = save_.NumConfig();
 			}
 
-			/* NVT MD simulations */
-			double MDTimeStep = 0.01;
-			size_t MDStepPerSample = 100000; 
+			/* Input parameters */
+			for(;;){
+				ifile >> tempstring2;
+				std::transform(tempstring2.begin(), tempstring2.end(), tempstring2.begin(),::tolower); // make the input in the lower case
+				if (tempstring2.compare("run") == 0){
+					/* start MD simulation */
+					break;
+				}
+				else if (tempstring2.compare("timestep") == 0){
+					ofile << "\ndt = ";
+					ifile >> MDTimeStep ;
+				}
+				else if (tempstring2.compare("samplesteps") == 0){
+					ofile << "\nSample config. per \'n\' dt   ";
+					ofile << "n = ";
+					ifile >> MDStepPerSample ; 
+				}
+				else if (tempstring2.compare("temperature") == 0){
+					ofile << "\nMD temperature [in the unit of v0] = ";
+					ifile >> MD_Temperature ; 
+				}
+				else if (tempstring2.compare("numequilibration") == 0){
+					ofile << "\nThe number sampling steps to equilibrate samples = ?";
+					ifile >> numEquilSamples;
+				}
+				else if (tempstring2.compare("autotimestep")== 0){
+					ofile << "\nTime step will be determined automatically\n";
+					MDAutoTimeStep = true;
+				}
+				else {
+					ofile << tempstring2 << " is an undefined command\n";
+				}
+			}
+
 			if (MD_Temperature < 0.0){
-				ofile << "Temperature is undefined;\n";
+				ofile << "\nTemperature is undefined;\n";
 				if (dim == 1){
 					MD_Temperature = 2e-4;
 				}
@@ -318,7 +344,7 @@ int GetCCO(int argc, char ** argv){
 				Configuration pConfig = GetInitConfigs(0);
 				bool MDAllowRestore = true;
 				size_t MDEquilibrateSamples = numEquilSamples;
-				bool MDAutoTimeStep = false;
+				//bool MDAutoTimeStep = false;
 				CollectiveCoordinateMD(&pConfig, potential, rngGod, MDTimeStep, MD_Temperature, savename, numConfig, MDStepPerSample, MDAllowRestore, TimeLimit, MDEquilibrateSamples, MDAutoTimeStep);
 			}
 			else if	(strcmp (tempstring, "input") == 0){
@@ -330,7 +356,7 @@ int GetCCO(int argc, char ** argv){
 				size_t MDEquilibrateSamples = numEquilSamples;
 				size_t numConfig_comp = (numConfig > num_in_save)? numConfig - num_in_save : 0 ;
 				
-				bool MDAutoTimeStep = false;
+				//bool MDAutoTimeStep = false;
 				CollectiveCoordinateMD(&pConfig, potential, rngGod, MDTimeStep, MD_Temperature, savename, numConfig_comp, MDStepPerSample, MDAllowRestore, TimeLimit, MDEquilibrateSamples, MDAutoTimeStep);
 			//TODO
 			}
@@ -341,6 +367,42 @@ int GetCCO(int argc, char ** argv){
 		else if (strcmp (mode, "ground") == 0)
 		{
 			/* Quench to zero temperature */
+			/* Parameters for minimizations */
+			size_t max_steps = 10000;
+			double tolerance = 1e-14;
+			std::string algorithm = "LBFGS";
+
+			ofile << "--------------------------------------- \n";
+			ofile << "\t\t Input parameters for minimizations \n";
+			ofile << "--------------------------------------- \n";
+			for(;;){
+				ifile >> tempstring2;
+				std::transform(tempstring2.begin(), tempstring2.end(), tempstring2.begin(),::tolower); // make the input in the lower case
+				if (tempstring2.compare("run") == 0){
+					/* start minimizations simulation */
+					break;
+				}
+				else if (tempstring2.compare("tolerance") == 0){
+					ofile << "\n energy tolerance for ground states [in the unit of v0] = ";
+					ifile >> tolerance ;
+				}
+				else if (tempstring2.compare("maxsteps") == 0){
+					ofile << "\n Limit number of evaluations = ";
+					ifile >> max_steps ;
+				}
+				else if (tempstring2.compare("algorithm") == 0){
+					ofile << "\nMinimization algorithm = ";
+					ifile >> algorithm ; 
+				}
+				else {
+					ofile << tempstring2 << " is an undefined command\n";
+				}
+			}
+			ofile << "\nNumerical optimizer is "<< algorithm <<std::endl;
+			ofile << "Energy tolerance is "<< tolerance <<std::endl;
+			ofile << "Max. steps of evaluations is "<< max_steps <<std::endl;
+
+
 			if (strcmp (tempstring, "random") == 0){
 				/* random initial conditions 
 					=> use MultiRun */
