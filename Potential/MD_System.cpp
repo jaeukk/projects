@@ -105,11 +105,11 @@ void ParticleMolecularDynamics::FindOptimalTimeStep(Potential & potential, doubl
 		else
 			break;
 		std::cout<<"Max Delta force="<<this->MaxDeltaForce<<", TimeStep adjusted to:"<<TimeStep<<'\n';
-		logfile<<"Max Delta force="<<this->MaxDeltaForce<<", TimeStep adjusted to:"<<TimeStep<<'\n';
+		//logfile<<"Max Delta force="<<this->MaxDeltaForce<<", TimeStep adjusted to:"<<TimeStep<<'\n';
 		if(this->MaxDeltaForce>1e10)
 		{
 			std::cout<<"max delta force too large, relax structure!\n";
-			logfile<<"max delta force too large, relax structure!\n";
+			//logfile<<"max delta force too large, relax structure!\n";
 			RelaxStructure_NLOPT(this->Position, potential, 0.0, 0, 0.0);
 		}
 	}
@@ -164,23 +164,23 @@ void ParticleMolecularDynamics::Evolve_AutoTimeStep(size_t repeat, Potential & p
 
 	if (dlogEperStep>5 * DeltaLogEnergyPerStep)
 	{
-		this->TimeStep *= 0.5;
+		this->TimeStep *= 0.9; //0.5;
 	}
 	else if (dlogEperStep>3 * DeltaLogEnergyPerStep)
 	{
-		this->TimeStep *= 0.9;
+		this->TimeStep *= 0.95; //0.9;
 	}
 	else if (dlogEperStep>2 * DeltaLogEnergyPerStep)
 	{
-		this->TimeStep*=0.95;
+		this->TimeStep*= 0.99; //0.95;
 	}
 	else if(dlogEperStep<0.01*DeltaLogEnergyPerStep)
 	{
-		this->TimeStep*=1.20;
+		this->TimeStep*=1.05; //1.20;
 	}
 	else if(dlogEperStep<0.5*DeltaLogEnergyPerStep)
 	{
-		this->TimeStep*=1.05;
+		this->TimeStep*=1.005; //1.05;
 	}
 
 	//debug temp
