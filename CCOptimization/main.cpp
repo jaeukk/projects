@@ -610,7 +610,6 @@ int CollectiveCoordinateMultiRun(Configuration * pConfig, Potential * pPotential
 	for(size_t i=0; i<SampleNumber; i++)
 	{
 		std::cout<<"at time "<<std::time(nullptr)-ProgramStart<<",\tgenerating config"<<i<<"\n";
-		logfile<<"at time "<<std::time(nullptr)-ProgramStart<<",\tgenerating config"<<i;
 		Configuration result(*pConfig);
 		pPotential->SetConfiguration(*pConfig);
 		double E_init=pPotential->Energy();
@@ -635,12 +634,9 @@ int CollectiveCoordinateMultiRun(Configuration * pConfig, Potential * pPotential
 		double E=pPotential->Energy();
 		std::cout<<" \tE_init="<<E_init<<" \n";
 		std::cout<<" \tE_relax="<<E<<" \n";
-		logfile<<" \tE_init="<<E_init<<" \n";
-		logfile<<" \tE_relax="<<E<<" \n";
 		if(E<E_max)
 		{
 			std::cout<<"Add to success pack\n";
-			logfile<<"Add to success pack\n";
 			SuccessPack.AddConfig(result);
 		}
 		if(std::time(nullptr) > TimeLimit)
@@ -712,7 +708,6 @@ int CollectiveCoordinateMD(Configuration * pConfig, Potential * pPotential, Rand
 
 	size_t NumExistConfig=0;
 	std::cout<<"CCMD start. Temperature="<<Temperature<<'\n';
-	logfile<<"CCMD start. Temperature="<<Temperature<<'\n';
 	
 	if(stage==0)
 	{
@@ -754,9 +749,8 @@ int CollectiveCoordinateMD(Configuration * pConfig, Potential * pPotential, Rand
 			}
 
 			pPot->SetConfiguration(psystem->Position);
-			std::cout<<"1:"<<i<<"/"<<(EquilibrateSamples)<<", x0="<<psystem->Position.GetCartesianCoordinates(0).x[0]<<", Ep="<<pPot->Energy()<<", Ek="<<psystem->GetKineticEnergy()<<", dt="<<psystem->TimeStep<<'\n';;
-			logfile<<"1:"<<i<<"/"<<(EquilibrateSamples)<<", x0="<<psystem->Position.GetCartesianCoordinates(0).x[0]<<", Ep="<<pPot->Energy()<<", Ek="<<psystem->GetKineticEnergy()<<", dt="<<psystem->TimeStep<<'\n';;
-			std::cout.flush();
+			std::cout<<"1:"<<i<<"/"<<(EquilibrateSamples)<<", x0="<<psystem->Position.GetCartesianCoordinates(0).x[0]<<", Ep="<<pPot->Energy()<<", Ek="<<psystem->GetKineticEnergy()<<", dt="<<psystem->TimeStep<<'\n';
+
 		}
 		stage++;
 		step=0;
@@ -781,7 +775,6 @@ int CollectiveCoordinateMD(Configuration * pConfig, Potential * pPotential, Rand
 			return 0;
 		}
 		std::cout<<"at time"<<std::time(nullptr)-ProgramStart;
-		logfile<<"at time"<<std::time(nullptr)-ProgramStart;
 		//std::swap(tempNumThread, pPot->ParallelNumThread);
 		psystem->AndersonEvolve(StepPerSample/2, *pPot, Temperature, 0.01, gen);
 		psystem->Evolve(StepPerSample/2, *pPot);
@@ -791,12 +784,7 @@ int CollectiveCoordinateMD(Configuration * pConfig, Potential * pPotential, Rand
 		pPot->SetConfiguration(result);
 		double Ek = psystem->GetKineticEnergy(), Ep = pPot->Energy();
 		std::cout<<", 2:"<<i<<"/"<<(SampleNumber)<<" \tE_relax="<< Ep <<" \t";
-		logfile<<", 2:"<<i<<"/"<<(SampleNumber)<<" \tE_relax="<< Ep <<" \t";
-		// pPot->SetConfiguration(psystem->Position);
-		// std::cout<<"E_p="<<pPot->Energy()<<" \t";
-		// logfile<<"E_p="<<pPot->Energy()<<" \t";
 		std::cout<<"E_k="<<Ek<<", dt="<<psystem->TimeStep<<'\n';
-		logfile<<"E_k="<<Ek<<", dt="<<psystem->TimeStep<<'\n';
 
 		//AfterRelaxPack.AddConfig(result);
 		//if(QuenchAfterMD)
