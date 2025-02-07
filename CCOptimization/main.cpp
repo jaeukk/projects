@@ -283,6 +283,7 @@ int GetCCO(int argc, char ** argv){
 			size_t MDStepPerSample = 100000; 
 			size_t numEquilSamples = 500;
 			bool MDAutoTimeStep = false;
+			bool MDAllowRestore = false;
 			{
 				ConfigurationPack save_(savename);				
 				num_in_save = save_.NumConfig();
@@ -308,6 +309,7 @@ int GetCCO(int argc, char ** argv){
 				else if (tempstring2.compare("temperature") == 0){
 					ofile << "\nMD temperature [in the unit of v0] = ";
 					ifile >> MD_Temperature ; 
+					ofile << MD_Temperature <<"\n\n";
 				}
 				else if (tempstring2.compare("numequilibration") == 0){
 					ofile << "\nThe number sampling steps to equilibrate samples = ?";
@@ -316,6 +318,10 @@ int GetCCO(int argc, char ** argv){
 				else if (tempstring2.compare("autotimestep")== 0){
 					ofile << "\nTime step will be determined automatically\n";
 					MDAutoTimeStep = true;
+				}
+				else if (tempstring2.compare("restore")== 0){
+					ofile << "\nSave and load the progress of MD simulations.\n";
+					MDAllowRestore = true;
 				}
 				else {
 					ofile << tempstring2 << " is an undefined command\n";
@@ -342,7 +348,7 @@ int GetCCO(int argc, char ** argv){
 				/* Start from a random initial condition and basic properties */
 				
 				Configuration pConfig = GetInitConfigs(0);
-				bool MDAllowRestore = true;
+				
 				size_t MDEquilibrateSamples = numEquilSamples;
 				//bool MDAutoTimeStep = false;
 				CollectiveCoordinateMD(&pConfig, potential, rngGod, MDTimeStep, MD_Temperature, savename, numConfig, MDStepPerSample, MDAllowRestore, TimeLimit, MDEquilibrateSamples, MDAutoTimeStep);
@@ -352,7 +358,7 @@ int GetCCO(int argc, char ** argv){
 				ofile << "MD Temperature = "<< MD_Temperature << std::endl;
 			
 				Configuration pConfig = GetInitConfigs(num_in_load - 1);
-				bool MDAllowRestore = true;
+				//bool MDAllowRestore = true;
 				size_t MDEquilibrateSamples = numEquilSamples;
 				size_t numConfig_comp = (numConfig > num_in_save)? numConfig - num_in_save : 0 ;
 				
@@ -664,18 +670,16 @@ int CollectiveCoordinateMD(Configuration * pConfig, Potential * pPotential, Rand
 	if(OneTenthStepPerSample==0)
 		OneTenthStepPerSample=1;
 
-	RelaxStructure_NLOPT(*pConfig, *pPotential, 0.0, 0, 0.0, 1000);
 	DimensionType dim=pConfig->GetDimension();
 	size_t Num=pConfig->NumParticle();
 	size_t dimTensor=dim*Num;
 	Potential * pPot=pPotential;
 	//unsigned long tempNumThread=1;//use this when doing MD because there is parallelization in MD code, so no need to parallelize in the potential
-	pPot->SetConfiguration(* pConfig);
-	double E=pPot->Energy();
 	ParticleMolecularDynamics * psystem = NULL;
 
 	bool Restart = false;
-	signed char stage=0;
+	//signed char stage=0;
+	signed int stage=0;
 	long long step=0;
 	if(AllowRestore)
 	{
@@ -685,13 +689,24 @@ int CollectiveCoordinateMD(Configuration * pConfig, Potential * pPotential, Rand
 			ifile.read( (char*)(&stage), sizeof(stage) );
 			ifile.read( (char*)(&step), sizeof(step) );
 			psystem = new ParticleMolecularDynamics(ifile);
+			pPot->SetConfiguration(psystem->Position);
 			Restart=true;
 			std::cout << "Continue from " << Prefix+std::string(".MDDump") <<"\n";
+			
+			double Ek = psystem->GetKineticEnergy();
+			double Ep = pPot->Energy();
+			std::cout << "stage "<< stage << ",\tstep " << step <<": \tE_relax="<< Ep <<" \t E_k=" << Ek <<"\n";
+			step ++;
 		}
 	}
 	if(Restart == false)
 	{
 		BeforeRelaxPack.Clear();
+		/* equilibration starts from a ground state */
+		RelaxStructure_NLOPT(*pConfig, *pPotential, 0.0, 0, 0.0, 1000);
+		pPot->SetConfiguration(* pConfig);
+		double E=pPot->Energy();
+
 		psystem = new ParticleMolecularDynamics(*pConfig, TimeStep, 1.0); 
 	}
 
@@ -701,12 +716,16 @@ int CollectiveCoordinateMD(Configuration * pConfig, Potential * pPotential, Rand
 	
 	if(stage==0)
 	{
+		/* equilibration starts from a ground state. */
 		stage++;
 		step=0;
 	}
 	if(stage==1)
 	{
 		//stage 1: equilibration after adjusting time step
+		std::cout << "------------------------\n";
+		std::cout << "	Equilibration step    \n";
+		std::cout << "------------------------\n";	
 		for(long long i=step; i<EquilibrateSamples; i++)
 		{
 			if (std::time(nullptr) > TimeLimit || std::time(nullptr) > ::TimeLimit)
@@ -727,7 +746,8 @@ int CollectiveCoordinateMD(Configuration * pConfig, Potential * pPotential, Rand
 				psystem->SetRandomSpeed(Temperature, gen);
 				//std::swap(tempNumThread, pPot->ParallelNumThread);
 				if(MDAutoTimeStep)
-					psystem->Evolve_AutoTimeStep(StepPerSample/2, *pPot, 0.0001/SampleNumber);
+//					psystem->Evolve_AutoTimeStep(StepPerSample/2, *pPot, 0.0001/SampleNumber);
+					psystem->Evolve_AutoTimeStep(StepPerSample/2, *pPot, 0.0001);
 				else
 					psystem->Evolve(StepPerSample/2, *pPot);
 				//std::swap(tempNumThread, pPot->ParallelNumThread);
@@ -743,6 +763,10 @@ int CollectiveCoordinateMD(Configuration * pConfig, Potential * pPotential, Rand
 	}
 
 	//stage 2: sample
+	std::cout << "------------------------\n";
+	std::cout << "		Sampling step     \n";
+	std::cout << "------------------------\n";
+	long long final_step=0;
 	for(long long i=step; i<SampleNumber; i++)
 	{
 		if (std::time(nullptr) > TimeLimit || std::time(nullptr) > ::TimeLimit)
@@ -765,19 +789,29 @@ int CollectiveCoordinateMD(Configuration * pConfig, Potential * pPotential, Rand
 		Configuration result(psystem->Position);
 		
 		pPot->SetConfiguration(result);
-		std::cout<<", 2:"<<i<<"/"<<(SampleNumber)<<" \tE_relax="<<pPot->Energy()<<" \t";
-		logfile<<", 2:"<<i<<"/"<<(SampleNumber)<<" \tE_relax="<<pPot->Energy()<<" \t";
-		pPot->SetConfiguration(psystem->Position);
-		std::cout<<"E_p="<<pPot->Energy()<<" \t";
-		logfile<<"E_p="<<pPot->Energy()<<" \t";
-		std::cout<<"E_k="<<psystem->GetKineticEnergy()<<", dt="<<psystem->TimeStep<<'\n';
-		logfile<<"E_k="<<psystem->GetKineticEnergy()<<", dt="<<psystem->TimeStep<<'\n';
+		double Ek = psystem->GetKineticEnergy(), Ep = pPot->Energy();
+		std::cout<<", 2:"<<i<<"/"<<(SampleNumber)<<" \tE_relax="<< Ep <<" \t";
+		logfile<<", 2:"<<i<<"/"<<(SampleNumber)<<" \tE_relax="<< Ep <<" \t";
+		// pPot->SetConfiguration(psystem->Position);
+		// std::cout<<"E_p="<<pPot->Energy()<<" \t";
+		// logfile<<"E_p="<<pPot->Energy()<<" \t";
+		std::cout<<"E_k="<<Ek<<", dt="<<psystem->TimeStep<<'\n';
+		logfile<<"E_k="<<Ek<<", dt="<<psystem->TimeStep<<'\n';
 
 		//AfterRelaxPack.AddConfig(result);
 		//if(QuenchAfterMD)
 		BeforeRelaxPack.AddConfig(result);
 
 		std::cout.flush();
+		final_step = i;
+	}
+
+	if (AllowRestore){
+		std::cout << "Store the last configuration and simulation parameters for future use.\n";
+		std::fstream ofile( Prefix+std::string(".MDDump"), std::fstream::out | std::fstream::binary);
+		ofile.write( (char*)(&stage), sizeof(stage) );
+		ofile.write( (char*)(&final_step), sizeof(final_step) );
+		psystem->WriteBinary(ofile);
 	}
 	//::Output("FinalConfiguration", psystem->Position);
 	delete psystem;
