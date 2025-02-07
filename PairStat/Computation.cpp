@@ -447,7 +447,6 @@ void g2Computation::Write(const std::string OutputPrefix)
 {
 	std::vector<std::string> fields;
 	fields.emplace_back("#r\t#g_2\t#err. r\t#err. g2");
-	logfile<<"g_2:\n";
 	WriteFunction(result, (OutputPrefix+std::string("_gofr")).c_str(),fields);
 }
 
@@ -526,8 +525,6 @@ void SkComputation::Write(const std::string OutputPrefix)
 {
 	std::vector<std::string> fields;
 	fields.emplace_back("#k\t#S(k)\t#err. k\t#err. S(k)");	
-//	std::cout<<"S(k):\n";
-//	WriteFunction(result, logfile);
 	WriteFunction(result, (OutputPrefix+std::string("_Sofk")).c_str(), fields);
 }
 
@@ -845,3 +842,87 @@ void CumulativeCoordinationNumberComputation::ProcessAdditionalOption(const std:
 {
 	output << "Unrecognized command!\n";
 }
+
+
+void AverageClusterSizeComputation::Compute(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfig){
+	
+	omp_lock_t DisplayLock, PercolationRadiusLock;
+	omp_init_lock(&DisplayLock);
+	omp_init_lock(&PercolationRadiusLock);
+	std::cout << "Computing average cluster size";
+	progress_display pd(NumConfig);
+	std::map<size_t, size_t> counts;
+#pragma omp parallel
+	{
+#pragma omp for schedule(guided)
+		for (signed long i = 0; i<NumConfig; i++)
+		{
+			omp_set_lock(&DisplayLock);
+			pd++;
+			omp_unset_lock(&DisplayLock);
+
+			Configuration c = GetConfigsFunction(i);
+			RandomGenerator gen((seed + 1)*(i + 1));
+			DimensionType dim = c.GetDimension();
+
+			for (auto iter = result.begin(); iter != result.end(); ++iter)
+			{
+				double r = iter->x[0];
+				omp_set_lock(&PercolationRadiusLock);
+				if (r > PercolationRadius)
+				{
+					omp_unset_lock(&PercolationRadiusLock);
+					break;
+				}
+				omp_unset_lock(&PercolationRadiusLock);
+				for (size_t j = 0; j < SampleSize; j++)
+				{
+					bool percolating;
+					size_t csize = ClusterSize(c, c.GetRandomParticle(gen), r, percolating);
+					if (percolating)
+					{
+						omp_set_lock(&PercolationRadiusLock);
+						PercolationRadius = std::min(PercolationRadius, r);
+						omp_unset_lock(&PercolationRadiusLock);
+					}
+					else
+					{
+#pragma omp atomic
+						iter->x[1] += csize;
+					}
+				}
+			}
+		}
+	}
+	omp_destroy_lock(&DisplayLock);
+	omp_destroy_lock(&PercolationRadiusLock);
+	size_t AvailableDataSize = result.size();
+	for (auto iter = result.begin(); iter != result.end(); ++iter)
+	{
+		if (iter->x[0] > PercolationRadius)
+		{
+			std::cout << "Percolation detected at r=" << PercolationRadius << ", remove data beyond.\n";
+			AvailableDataSize = iter - result.begin();
+			break;
+		}
+		else
+			iter->x[1] /= (double)(SampleSize)*(double)(NumConfig);
+	}
+	result.resize(AvailableDataSize);
+	
+}
+
+
+void AverageClusterSizeComputation::Write(const std::string OutputPrefix)
+{
+	WriteFunction(result, (OutputPrefix + prefix).c_str());
+}
+
+void AverageClusterSizeComputation::Plot(const std::string OutputPrefix, const std::string & Title)
+{
+	//PlotFunction_MathGL(result, OutputPrefix + prefix, "N", "p(N)");
+	PlotFunction_Grace(result, OutputPrefix + prefix, "r", "average cluster size", Title);
+}
+
+
+

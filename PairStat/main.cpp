@@ -340,6 +340,10 @@ int PairStatisticsCLI(){
 		{
 			vpComputations.push_back( new CumulativeCoordinationNumberComputation(ifile, ofile) );
 		}
+		else if (strcmp(tempstring, "AverageClusterSize") == 0)
+		{
+			vpComputations.push_back( new AverageClusterSizeComputation(ifile, ofile) );
+		}
 
 
 		else if (strcmp(tempstring, "GetConfigsFunction") == 0)

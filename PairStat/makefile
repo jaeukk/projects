@@ -72,7 +72,7 @@ objs_pot = #Potential.o StructureOptimization.o
 objs_main = main.o Computation.o NumberVariance.o StructureFactor.o PairCorrelation.o ContactStatistics.o
 
 DEPS = $(core)/GeometryVector.h $(core)/RandomGenerator.h $(core)/etc.h $(core)/PeriodicCellList.h StructureFactor.h PairCorrelation.h \
-Computation.h NumberVariance.h ContactStatistics.h
+Computation.h NumberVariance.h ContactStatistics.h 
 #  ../GenerateConfigs.h ../HardSphereFluids.h ../RandomSequentialAddition.h
 
 OBJ_core = $(patsubst %.o, $(ODIR)%.o, $(objs_core))

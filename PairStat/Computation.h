@@ -241,4 +241,38 @@ public:
 };
 
 
+//calculate average cluster size for a bunch of radii, until a particle is connected to its periodic image
+class AverageClusterSizeComputation : public Computation
+{
+public:
+	std::vector<GeometryVector> result;
+	size_t SampleSize;
+	int seed;
+	std::string prefix;
+	double PercolationRadius;//a particle has been found to connect to its periodic image at this radius, therefore calculation for higher radii is futile
+	AverageClusterSizeComputation(std::istream & ifile, std::ostream & ofile)
+	{
+		ofile << "Enter min, increment, and radius:";
+		double min, inc, max;
+		ifile >> min;
+		ifile >> inc;
+		ifile >> max;
+		ofile << "Enter sample size per configuration per radius:";
+		ifile >> SampleSize;
+		ofile << "Enter Random Seed:";
+		ifile >> seed;
+		for (double x = min; x<max; x += inc)
+		{
+			result.push_back(GeometryVector(x, 0.0));
+		}
+		std::stringstream ss;
+		ss << "_AverageClusterSize";
+		prefix = ss.str();
+		PercolationRadius = ::MaxDistance;
+	}
+	virtual void Compute(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfig);
+	virtual void Write(const std::string OutputPrefix);
+	virtual void Plot(const std::string OutputPrefix, const std::string & Title);
+};
+
 #endif // COMPUTATION_H__
