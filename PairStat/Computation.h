@@ -192,6 +192,7 @@ class CumulativeCoordinationNumberComputation : public Computation
 public:
 	std::vector<GeometryVector> result;
 	double rmin, rmax, dr;
+	bool logscale = false;
 	
 	CumulativeCoordinationNumberComputation(std::istream & ifile, std::ostream & ofile)
 	{

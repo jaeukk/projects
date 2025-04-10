@@ -33,6 +33,6 @@ void ContactNumbers(std::function<const Configuration(size_t i)> GetConfigsFunct
 /// @param r_max 
 /// @param dr 
 /// @param Result 
-void CumulativeCoordinationNumber(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfigs, double r_min, double r_max, double dr, std::vector<GeometryVector> &Result);
+double CumulativeCoordinationNumber(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfigs, double r_min, double r_max, double dr, std::vector<GeometryVector> &Result, bool logscale=false);
 
 #endif

@@ -371,16 +371,23 @@ int PairStatisticsCLI(){
 				//automatic sets NumConfig since Configuration Pack contains this information
 				else{
 					c.sequential_sampling = true;
-					size_t num = c.p.NumConfig()-StartIdx;
 					std::cout<<"The config pack contains "<<c.p.NumConfig()<<" configurations.";
-
-					if (NumConfig == 0){
-						std::cout << "Set NumConfig to this value because the former is undefined.\n";
-						NumConfig= num;
+					if (c.p.NumConfig() < StartIdx){
+						GetConfigsFunction = nullptr;
+						NumConfig = 0;
+						std::cout << "StartIdx exceeds the size of ConfigPack\n";
 					}
-					else if (NumConfig > num){
-						std::cout << "Set NumConfig to this value because the former is greater than the latter.\n";
-						NumConfig= num;
+					else{
+						size_t num = c.p.NumConfig()-StartIdx;
+	
+						if (NumConfig == 0){
+							std::cout << "Set NumConfig to this value because the former is undefined.\n";
+							NumConfig= num;
+						}
+						else if (NumConfig > num){
+							std::cout << "Set NumConfig to this value because the former is greater than the latter.\n";
+							NumConfig= num;
+						}
 					}
 				}
 				GetConfigsFunction = c;
@@ -448,10 +455,15 @@ int PairStatisticsCLI(){
 				for(auto iter=vpComputations.begin(); iter!=vpComputations.end(); iter++)
 				{
 					(*iter)->SetNumThreads(NumThreads);
-					(*iter)->Compute(GetConfigsFunction, NumConfig);
-					(*iter)->Write(OutputPrefix);
-					if(AlsoWriteGrace)
-						(*iter)->Plot(OutputPrefix, GraceTitle);
+					if (NumConfig > 0){
+						(*iter)->Compute(GetConfigsFunction, NumConfig);
+						(*iter)->Write(OutputPrefix);
+						if(AlsoWriteGrace)
+							(*iter)->Plot(OutputPrefix, GraceTitle);
+					}
+					else{
+						ofile << "Skip calculations \n";
+					}
 				}
 			}
 		}

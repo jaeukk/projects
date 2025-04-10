@@ -821,14 +821,22 @@ void CoordinationNumberComputation::ProcessAdditionalOption(const std::string & 
 
 void CumulativeCoordinationNumberComputation::Compute(std::function<const Configuration(size_t i)> GetConfigsFunction, size_t NumConfig)
 {
-	CumulativeCoordinationNumber( GetConfigsFunction, NumConfig, rmin, rmax, dr, result);
+	this->rmin = CumulativeCoordinationNumber( GetConfigsFunction, NumConfig, rmin, rmax, dr, result, this->logscale);
 }
 
 void CumulativeCoordinationNumberComputation::Write(const std::string OutputPrefix)
 {
 	std::vector<std::string> fields;
-	fields.emplace_back("#Z(r) = cumulative coordination number up to r");	
-	fields.emplace_back("#r\t#Z(r)\t#err. Z ");	
+	fields.emplace_back("Z(r) = cumulative coordination number up to r\n");
+	if (this->logscale){
+		fields.emplace_back("logscale, r_i = rmin + sum_{j=0}^i dr_j, where dr_i = dr * ratio ^ i\n");
+		char text[300]={};
+		sprintf(text, "dr = %1.10e, ratio = %1.5e \n", this->dr, 1.01);
+		fields.emplace_back(std::string(text));
+		sprintf(text, "rmin = %1.16e \n", this->rmin);
+		fields.emplace_back(std::string(text));
+	}
+	fields.emplace_back("r\t#Z(r)\t#dr\t#err. Z ");	
 	std::cout<<"Z(r):\n";
 	WriteFunction(result, (OutputPrefix+std::string("_Zofr")).c_str(), fields);
 }
@@ -840,7 +848,11 @@ void CumulativeCoordinationNumberComputation::Plot(const std::string OutputPrefi
 
 void CumulativeCoordinationNumberComputation::ProcessAdditionalOption(const std::string &option, std::istream &input, std::ostream &output)
 {
-	output << "Unrecognized command!\n";
+	if (option == "logscale")
+		logscale = true;
+	else{
+		output << "Unrecognized command!\n";
+	}
 }
 
 
@@ -923,6 +935,4 @@ void AverageClusterSizeComputation::Plot(const std::string OutputPrefix, const s
 	//PlotFunction_MathGL(result, OutputPrefix + prefix, "N", "p(N)");
 	PlotFunction_Grace(result, OutputPrefix + prefix, "r", "average cluster size", Title);
 }
-
-
 

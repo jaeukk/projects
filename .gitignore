@@ -18,3 +18,6 @@ CCOptimization/log*
 
 */.vscode/*
 .vscode
+PairStat/test/3D_TJ_5000_unitDiameter.ConfigPack
+PairStat/test/3D_TJ_5000_unitDiameter.ConfigPackIndex
+PairStat/test/Z_test.sh
