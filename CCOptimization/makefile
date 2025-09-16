@@ -53,7 +53,7 @@ ODIR = ./obj/# object directory
 EXEdir = ./# directory for executables
 
 #	Executable
-TARGET = ./MC.out #$(EXEdir)CCO.out
+TARGET = $(EXEdir)CCO.out 
 
 #----- Flags and libraries -----
 GSLLIB = -L/home/jaeukk/lib/gsl/lib -lgsl -lgslcblas
