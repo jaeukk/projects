@@ -13,8 +13,9 @@
 
 #include <etc.h>
 #include <RandomGenerator.h>
-#include <functional>
 #include "Move.h"
+
+#include <functional>
 
 /**	\class	An abstract class to define and control the cooling schedule. */
 class CoolingSchedule
@@ -30,6 +31,7 @@ public:
 	//after class SimulatedAnnealing performs these MC trials, it will call Report to report it's current energy
 	//the class need to decide if another stage is needed, and update the variables
 };
+
 
 //General-Purpose Monte Carlo, not necessary for particles
 template<typename System, typename AdditionalInfo> class MonteCarlo
@@ -58,35 +60,21 @@ public:
 	{
 	}
 
-	virtual void Move(double Temperature, size_t Repeat, MCMove<System, AdditionalInfo> & move, AdditionalInfo add)
-	{
-		for(size_t i=0; i<Repeat; i++)
-		{
-			MoveCount++;
-			double PreFactor=1.0;
-			double dE=move.DeltaEnergy(*this->pSys, add, this->gen, PreFactor, LockStepSize, RecordEnergy);
-			if(Temperature ==0)
-			{
-				if(dE>0)
-					continue;
-			}
-			else if(gen.RandomDouble() > PreFactor*std::exp((-1)*dE/Temperature))
-				continue;
-				
-			move.Accept(*this->pSys, add);
-			this->RecordEnergy+=dE;
-		}
-	}
-	virtual void Anneal(AdditionalInfo add, CoolingSchedule & cool, MCMove<System, AdditionalInfo> & move, std::function<void(double & Energy, double Temperature, System & sys)> CallBack)
-	{
-		while(cool.Continue)
-		{
-			this->Move(cool.Temperature, cool.NumTry, move, add);
-			CallBack(this->RecordEnergy, cool.Temperature, *pSys);
+	
+	/// @brief Monte Carlo move function at a given temperature.
+	/// @param Temperature 
+	/// @param Repeat The number of total trial moves.
+	/// @param move	Definition of a trial move
+	/// @param add 
+	virtual void Move(double Temperature, size_t Repeat, MCMove<System, AdditionalInfo> & move, AdditionalInfo add);
 
-			cool.Report(this->RecordEnergy);
-		}
-	}
+
+	/// @brief Perform simulated annealing with a cooling schedule.
+	/// @param add 
+	/// @param cool 
+	/// @param move 
+	/// @param CallBack 
+	virtual void Anneal(AdditionalInfo add, CoolingSchedule & cool, MCMove<System, AdditionalInfo> & move, std::function<void(double & Energy, double Temperature, System & sys)> CallBack);
 };
 //class for Wang-Landau Monte Carlo
 //class BinDecider should have the following member functions:
