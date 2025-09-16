@@ -68,6 +68,20 @@ By default, it adjust time step optimally.
 int CollectiveCoordinateMD(Configuration * pConfig, Potential * pPotential, RandomGenerator & gen, double TimeStep, double Temperature, std::string Prefix, size_t SampleNumber, size_t StepPerSample, bool AllowRestore, time_t TimeLimit, size_t EquilibrateSamples, bool MDAutoTimeStep);
 
 
+/// @brief Get radius of the exclusion region in Fourier space corresponding to the chi value
+/// @param chi 	stealthiness parpameter
+/// @param rho 	number density
+/// @param d 	dimensions
+/// @return 
+double getK(double chi, double rho, DimensionType d);
+
+/// @brief Get stealthiness parameter chi from K and rho.
+/// @param K 
+/// @param rho 
+/// @param d 
+/// @return 
+double get_chi(double K, double rho, DimensionType d);
+
 class ReadConfigPack
 {
 public:
@@ -149,7 +163,7 @@ int GetCCO(int argc, char ** argv){
 		double K1, K2, val, chi = 0, L = 10, sigma, phi = 0.1, S0=0.0;
 		std::vector<double> param_vtilde;	// parameter used in vtilde functions
 		DimensionType dim = 2;
-		size_t num = L * L*L, numConfig = 300, num_in_load = 0, num_in_save = 0;
+		size_t num = L * L*L, numConfig = 300, num_in_load = 0, num_in_Init = 0, num_in_Success = 0;
 
 		int num_threads = 4;
 		ofile << "Dimension = "; ifile >> dim;
@@ -286,7 +300,7 @@ int GetCCO(int argc, char ** argv){
 			bool MDAllowRestore = false;
 			{
 				ConfigurationPack save_(savename);				
-				num_in_save = save_.NumConfig();
+				num_in_Init = save_.NumConfig();
 			}
 
 			/* Input parameters */
@@ -360,7 +374,7 @@ int GetCCO(int argc, char ** argv){
 				Configuration pConfig = GetInitConfigs(num_in_load - 1);
 				//bool MDAllowRestore = true;
 				size_t MDEquilibrateSamples = numEquilSamples;
-				size_t numConfig_comp = (numConfig > num_in_save)? numConfig - num_in_save : 0 ;
+				size_t numConfig_comp = (numConfig > num_in_Init)? numConfig - num_in_Init : 0 ;
 				
 				//bool MDAutoTimeStep = false;
 				CollectiveCoordinateMD(&pConfig, potential, rngGod, MDTimeStep, MD_Temperature, savename, numConfig_comp, MDStepPerSample, MDAllowRestore, TimeLimit, MDEquilibrateSamples, MDAutoTimeStep);
@@ -418,11 +432,11 @@ int GetCCO(int argc, char ** argv){
 
 				{
 					ConfigurationPack save_(savename+"_Success");				
-					num_in_save = save_.NumConfig();
+					num_in_Success = save_.NumConfig();
 				}
-				size_t numConfig_comp = (numConfig > num_in_save )? numConfig - num_in_save : 0;
+				size_t numConfig_comp = (numConfig > num_in_Success )? numConfig - num_in_Success : 0;
 
-				ofile << "We already have " << num_in_save << " Configurations in the savefile \n";
+				ofile << "We already have " << num_in_Success << " Configurations in the savefile \n";
 				ofile << "just compute "<< numConfig_comp <<" more Configurations \n";
 
 				ofile << "max_eval = " << max_steps << std::endl;
@@ -434,20 +448,25 @@ int GetCCO(int argc, char ** argv){
 				/* ReadConfigPack */
 				size_t idx_beg = 0;
 				{
-					ConfigurationPack save_(savename+"_InitConfig");				
-					num_in_save = save_.NumConfig();
+					ConfigurationPack load_(savename+"_InitConfig");				
+					num_in_Init = load_.NumConfig();
+					ConfigurationPack success_(savename+"_InitConfig");				
+					num_in_Success = success_.NumConfig();
 				}
-				size_t numConfig_upper = std::max(num_in_load, numConfig);
+				size_t numConfig_upper = std::min(num_in_load, beg_idx+numConfig);
 
 				ofile << "We start from the " << beg_idx << "-th Configuration from loadfile\n";  
-				ofile << "Among them, we already have used " << num_in_save << " Configurations  \n";
-				num_in_save += beg_idx;
-				ofile << "compute from the "<< num_in_save << "th Config. to the " << numConfig_upper <<"th Config.\n";
-
-				for (size_t i = num_in_save; i < numConfig; i++){
-					Configuration pConfig = GetInitConfigs(i);
-					pConfig.PrepareIterateThroughNeighbors(sigma);
-					CollectiveCoordinateMultiRun(&pConfig, potential, rngGod, savename, 1, TimeLimit, algorithm, tolerance, max_steps);
+				ofile << "Among them, we already have used " << num_in_Init << " Configurations  \n";
+				num_in_Init += beg_idx;
+				ofile << "compute from the "<< num_in_Init << "th Config. to the " << numConfig_upper <<"th Config.\n";
+				size_t id = num_in_Init;
+				for (size_t i = num_in_Success; i < numConfig; i++){
+					if ( id < num_in_load ){
+						Configuration pConfig = GetInitConfigs(id);
+						pConfig.PrepareIterateThroughNeighbors(sigma);
+						CollectiveCoordinateMultiRun(&pConfig, potential, rngGod, savename, 1, TimeLimit, algorithm, tolerance, max_steps);
+					}
+					id ++ ;
 				}
 				delete potential;				
 			}
@@ -515,6 +534,432 @@ int GetCCO(int argc, char ** argv){
 	return 0;
 }
 
+int MC_CCO(int argc, char ** argv){
+	/* common input */
+	char tempstring[1000] = {};
+	std::string tempstring2;
+	std::istream & ifile = std::cin;
+	std::ostream & ofile = std::cout;
+
+	size_t timelimit_in_hour = 144;
+	size_t beg_idx = 0;
+	int seed = 0;
+	std::string vtilde = "flat";
+	if (argc > 1){
+		timelimit_in_hour = (time_t)std::atoi(argv[1]);
+		if (argc > 2){
+			seed = std::atoi(argv[2]);
+		}
+		if (argc > 3){
+			beg_idx = std::atoi(argv[3]);
+		}
+		if (argc > 4){
+			Verbosity = (size_t) (std::atoi(argv[4]));
+		}
+		if (argc > 5){
+			vtilde = std::string(argv[5]);
+		}
+	}
+	RandomGenerator rngGod(seed), rng(0);
+	ofile << "Time limit for simulations is "<< timelimit_in_hour << " hours\n";
+	ofile << "Random seed is "<< seed <<std::endl;
+	ofile << "Verbosity is "<< Verbosity <<std::endl;
+	ofile << "Shape of potential is "<< vtilde <<std::endl;
+	auto start = std::time(nullptr);
+	ProgramStart = start;
+	TimeLimit = ProgramStart + timelimit_in_hour*3600 - 5*60;//default time limit of 144 hours - 5 mins (for saving progress)
+
+	/* parameters for potential */
+	double K1, chi_target, val, L, sigma, phi = 0.1, S0=0.0;
+	std::vector<double> param_vtilde;	// parameter used in vtilde functions
+	DimensionType dim = 2;
+	size_t num; 
+
+	int num_threads = 4;
+	ofile << "Dimension = "; ifile >> dim;
+	ofile << "K1 = ";	ifile >> K1;
+	ofile << "chi_target = ";	ifile >> chi_target;
+	//ofile << "K2a = ";	ifile >> K2;
+	ofile << "S0 = ";	ifile >> S0;
+	ofile << "val = ";	ifile >> val;
+	ofile << "sigma = "; ifile >> sigma;
+	ofile << "# threads = "; ifile >> num_threads;
+	ofile << "num particle = "; ifile >>num; 
+	L = pow(num, 1.0/(double)dim);	
+
+	/* Define initial conditions */
+	size_t numConfig = 300, num_in_load = 0, num_in_Init = 0;
+	char mode[100] = {};
+	std::string loadname, savename;		
+	std::function<const Configuration(size_t i)> GetInitConfigs = nullptr;
+
+	{
+		ofile << "num configs = "; ifile >> numConfig;
+		ofile << "NumParticle = "<<num<<std::endl;
+
+		ofile << "Initial conditions (random/input)= ";
+		ifile >> tempstring;
+		ofile << "Save as "; ifile >> savename;
+		ofile << std::endl;
+		ofile << "directory = "<< savename<<std::endl;
+
+		if (strcmp (tempstring, "random") == 0){
+		/* Randomg initial conditions */
+			GetInitConfigs = [&rngGod, &dim, &num, &L](size_t i) ->Configuration {
+				Configuration pConfig = GetUnitCubicBox(dim, 0.1);
+				pConfig.Rescale(L);
+				for (size_t i = 0; i < num; i++)
+					pConfig.Insert("a", rngGod);
+				return pConfig;
+			};
+		}
+		else if (strcmp (tempstring, "input") == 0){
+		/* Designated initial conditions */
+			ofile << "Load a ConfigPack file named as \n";
+			ifile >> loadname;
+			ReadConfigPack c(loadname, 1.0);
+			GetInitConfigs = c;
+			
+			num_in_load = c.p.NumConfig();
+			ofile << loadname <<".ConfigPack contains " << num_in_load << " realizations\n";
+			ofile << "starts from the " << beg_idx << "-th configuration\n";
+		}
+		else{
+			ofile << tempstring << " is undefined \n";
+			return 1;
+		}
+	}
+
+	/* Define potential */
+	//forMCPotential * pPot = nullptr;
+	ShiftedCCPotential_ForMC * pCCPot = nullptr;
+	{
+		Configuration c = GetInitConfigs(beg_idx);
+		double rho = c.NumParticle() / c.PeriodicVolume();
+		/* Find a list of constrained wavevectors */
+		double K2 = 1.1 * getK(chi_target + get_chi(K1, rho, dim), rho, dim);
+		double K1_squared = K1*K1;
+		std::vector<GeometryVector> ks_temp = GetKs(c, K2, K2, 1.0);
+		std::sort(ks_temp.begin(), ks_temp.end(), [](const GeometryVector & left, const GeometryVector & right) ->bool {return (left.Modulus2()<right.Modulus2()) ; });
+		ks_temp.erase(std::remove_if(ks_temp.begin(), ks_temp.end(), [&K1_squared](const GeometryVector & k) { return k.Modulus2() < K1_squared; }), ks_temp.end());
+		ofile << "test = " << ks_temp.size() << std::endl;
+		/* Adjust the number of constraints to be closest to the target chi value. */
+		{
+			size_t expected_num_constraints = (size_t) (dim * c.NumParticle() * chi_target );
+			double K_search_squared = ks_temp[expected_num_constraints-1].Modulus2();
+			size_t i1 = expected_num_constraints-1, i2 = i1;  // i1 < expected_num_constraints < i2.
+			while (i1 > 0 && ks_temp[i1].Modulus2() == K_search_squared) i1--;
+			while (i2 < ks_temp.size() && ks_temp[i2].Modulus2() == K_search_squared) i2++;
+			ofile << "i1, target, i2 = " << i1 << "\t" << expected_num_constraints <<"\t" << i2 << std::endl;
+			if (expected_num_constraints - i1 < i2 - expected_num_constraints){
+				// i1 is the closest
+				ks_temp.erase(ks_temp.begin() + i1 + 1, ks_temp.end());
+			}
+			else{
+				// i2 is the closest
+				ks_temp.erase(ks_temp.begin() + i2 + 1, ks_temp.end());
+			}			
+			K2 = std::sqrt(ks_temp.end()->Modulus2());
+		}
+		double chi_exact = ks_temp.size() / (double)(dim * (num - 1));
+		ofile << "chi_exact = " << chi_exact << ",\tchi_target = " << chi_target << std::endl;
+
+		if (S0 == 0.0)
+		{
+			ShiftedCCPotential pot_temp(dim);
+			pot_temp.ParallelNumThread = num_threads;
+			std::function<double (double k)> v;
+			std::vector<double> param_vtilde;
+			std::vector<double> vals;	vals.emplace_back(0);
+			{
+				if (vtilde.compare("flat") == 0){
+					ofile << "vtilde function = flat (by default)\n";
+					v = [](double k) -> double { return 1.0; };
+				}
+				else if (vtilde.compare("overlap") == 0){
+					ofile << "vtilde function = overlap function\n";
+					param_vtilde.emplace_back(K2);
+					v = [&dim, &param_vtilde](double k) -> double { return alpha(dim, k/(param_vtilde[0]));};
+				}
+				else if (vtilde.compare("power-law") == 0){
+					double m;
+					ofile << "vtilde function = power-law function \n";
+					ofile << "exponent? = ";	ifile >> m;	
+					param_vtilde.emplace_back(K2);
+					param_vtilde.emplace_back(m);
+					v = [&param_vtilde](double k) -> double { return std::pow(1. - k/param_vtilde[0], param_vtilde[1]);};
+				}
+			
+				for (auto k = ks_temp.begin(); k != ks_temp.end(); k++)
+				{
+					vals[0] = v(std::sqrt(k->Modulus2()));
+					pot_temp.AddConstraint(*k, vals);
+
+					if (Verbosity > 3){
+						ofile << std::sqrt(k->Modulus2()) << "\t" << vals[0] <<"\n";
+					}
+					
+				}
+			}
+
+			pCCPot = new ShiftedCCPotential_ForMC(pot_temp);	
+		}
+		else
+		{
+			//TODO: implement equiluminous case.
+			return 0;
+		}
+
+	}
+
+	/* Annealing */
+	double T_init = 1e-2, T_fin = 1e-14, cooling_rate = 0.95;
+	double tolerance = 1e-20;
+	double stepsize = 1e-1, reduce = 0.9, incr = 1.01, stepsize_init;
+	size_t equi_steps = 10000 , adjust_steps = 100, sampling_steps = 0;
+	size_t samples_at_T_fin = 1;
+	double acc_min = 0.25, acc_max = 0.35;
+	//RandomGenerator rng (seed);
+
+	// ofile << "stepsize = "; ifile >> stepsize ;
+	// ofile << "steps for adjusting step size = "; ifile >> adjust_steps;
+	// ofile << "steps for equilibration = "; ifile >> equi_steps;
+
+	/* Input parameters */
+	size_t max_inputs = 100;
+	for(size_t id=0; id < max_inputs; id ++ ){
+//		ofile << id << "--------------------------------------- \n";
+		ifile >> tempstring2;
+		std::transform(tempstring2.begin(), tempstring2.end(), tempstring2.begin(),::tolower); // make the input in the lower case
+		if (tempstring2.compare("run") == 0){
+			/* start MC simulation */
+			break;
+		}
+		else if (tempstring2.compare("stepsize") == 0){
+			ofile << "\n initial step size = ";
+			ifile >> stepsize ;
+		}
+		else if (tempstring2.compare("change_stepsize") == 0){
+			ofile << "\nMC increase/decrease step size by factors = ";
+			ifile >> incr;
+			ifile >> reduce;
+		}
+		else if (tempstring2.compare("equi_steps") == 0){
+			ofile << "\nSample config. per \'n\' MC cycles   ";
+			ofile << "n = ";
+			ifile >> equi_steps; 
+		}
+		else if (tempstring2.compare("adjust") == 0){
+			ofile << "\nMC cycles for adjusting step sizes = ?";
+			ifile >> adjust_steps;
+		}
+		else if (tempstring2.compare("t_init") == 0){
+			ofile << "\n Initial MC temperature [in the unit of v0] = ";
+			ifile >> T_init ; 
+			ofile << T_init <<"\n\n";
+		}
+		else if (tempstring2.compare("t_fin") == 0){
+			ofile << "\n Final MC temperature [in the unit of v0] = ";
+			ifile >> T_fin ; 
+			ofile << T_fin <<"\n\n";
+		}
+		else if (tempstring2.compare("coolingrate")== 0){
+			ofile << "\nCooling rate = \n";
+			ifile >> cooling_rate;
+			ofile << cooling_rate << "\n\n";
+		}
+		else if (tempstring2.compare("acceptance")== 0){
+			ofile << "\ntarget acceptance ratio (min/max) = \n";
+			ifile >> acc_min;	ifile >> acc_max;
+			ofile << acc_min <<"\t" << acc_max << "\n\n";
+		}
+		else if (tempstring2.compare("samples_tfin")== 0){
+			ofile << "\nSamples at the final temperature = \n";
+			ifile >> samples_at_T_fin;
+			ofile << samples_at_T_fin << "\n\n";
+			ofile << "sampling_steps = ";
+			ifile >> sampling_steps;
+			ofile << sampling_steps << "\n\n";  
+		}	
+		else {
+			ofile << tempstring2 << " is an undefined command\n";
+			break;
+		}
+	}
+
+
+	ConfigurationPack AfterRelaxPack(savename);
+	ConfigurationPack SuccessPack(savename + "_Success");
+	
+	for (size_t i = 0; i < numConfig; i++ ){
+		Configuration result = GetInitConfigs(i);
+		pCCPot -> SetConfiguration(result);
+		double E_curr = pCCPot -> Energy();
+		double T_curr = T_init; 
+		if (i > 0){
+			/* load stepsize in the previous cooling */
+			stepsize = stepsize_init;
+		}
+		/* cooling */
+		ofile << "config " << i <<": cooling start, E_init = " << E_curr << "\n";
+		while (T_curr > T_fin && E_curr > tolerance){
+			ofile << "@T=" << T_curr << ",\t";
+			/* adjust displacement */
+			double ACCEPTANCE = 0;
+			stepsize *= reduce;
+			while (ACCEPTANCE > acc_max || ACCEPTANCE < acc_min)
+			{	
+				ACCEPTANCE = 0.0;
+				for(size_t j = 0; j < adjust_steps; j++){
+				
+					for (size_t k = 0; k < result.NumParticle(); k++){
+						GeometryVector dx (dim);
+						for (size_t l = 0;  l < dim ; l++){
+							dx.x[l] = stepsize*(rngGod.RandomDouble()-0.5);
+						}
+						GeometryVector prevCart = result.GetCartesianCoordinates(k);
+						GeometryVector afterCart = prevCart + dx ;
+
+						double dE = pCCPot -> TryMove( prevCart, afterCart);
+						bool accept = (dE < 0.0) || (rngGod.RandomDouble() < std::exp(-dE/T_curr));
+						//ofile << dE << " : " << std::exp(-dE/T_curr) << "\n";
+						if (accept){
+							pCCPot->AcceptMove();
+							/* update coordinates */
+							GeometryVector afterRelative = result.CartesianCoord2RelativeCoord(afterCart);
+							result.MoveParticle(k, afterRelative);
+							E_curr += dE;
+
+							ACCEPTANCE ++ ;
+						}
+					}
+
+				}
+				ofile << "-";
+				double E_actual = pCCPot -> Energy();
+				ACCEPTANCE /= (double)adjust_steps * result.NumParticle();
+				if (Verbosity > 3){
+					ofile << "stepsize = " << stepsize << ", ";
+					ofile << "err_E = " << std::abs(E_curr-E_actual) << ", ";
+					ofile << "acceptance ratio = " << ACCEPTANCE << std::endl;
+				}
+				E_curr = E_actual;
+
+				if (ACCEPTANCE < acc_min){
+					stepsize *= reduce;
+				}
+				if (ACCEPTANCE > acc_max){
+					stepsize *= incr;
+				}
+			}
+			if (T_curr == T_init){
+				stepsize_init = stepsize;
+			}
+
+			if (Verbosity > 2){
+				/* determined parameters */
+				ofile << "(stepsize=" << stepsize << ", ";
+				ofile << "curent E=" << E_curr << ", ";
+				ofile << "acceptance ratio=" << ACCEPTANCE << ") ";
+			}
+
+			/* equilibration */
+			double E1 = 0.0, E2 =0.0, count  = 0;
+			for(size_t j = 0; j < equi_steps; j++){
+				
+				for (size_t k = 0; k < result.NumParticle(); k++){
+					GeometryVector dx (dim);
+					for (size_t l = 0;  l < dim ; l++){
+						dx.x[l] = stepsize*(rngGod.RandomDouble()-0.5);
+					}
+					GeometryVector prevCart = result.GetCartesianCoordinates(k);
+					GeometryVector afterCart = prevCart + dx ;
+
+					double dE = pCCPot -> TryMove( prevCart, afterCart);
+					bool accept = (dE < 0.0) || (rngGod.RandomDouble() < std::exp(-dE/T_curr));
+					if (accept){
+						pCCPot->AcceptMove();
+						/* update coordinates */
+						GeometryVector afterRelative = result.CartesianCoord2RelativeCoord(afterCart);
+						result.MoveParticle(k, afterRelative);
+						E_curr += dE;
+
+						E1 += E_curr;
+						E2 += E_curr*E_curr;
+						count++;
+						if ( E_curr < tolerance ){
+							break ;
+						}
+					}
+				}
+
+				if ( j % 500 == 99){
+					ofile << "*";
+					double E_actual = pCCPot -> Energy();
+					if (Verbosity > 3){
+						ofile << std::abs(E_curr-E_actual) ;
+					}
+					E_curr = E_actual;
+				}
+			}
+
+			{
+				/* intermeidate statistics */
+				double Emean = E1 / count; 
+				double Evar = std::sqrt(E2 / count - Emean*Emean);
+				ofile << "\t E=" << Emean << " (" << Evar << ", " << count << ")" << std::endl;
+			}
+
+			T_curr *= cooling_rate;
+		}
+
+
+		/* sampling at T = T_fin*/
+		ofile << "sampling at the final temperature, T=" << T_curr << "\n";
+
+		for (size_t j = 0; j < samples_at_T_fin ; j++){
+			ofile << ".";
+			for (size_t l = 0 ; l < sampling_steps; l++){
+
+				for (size_t k = 0; k < result.NumParticle(); k++){
+					GeometryVector dx (dim);
+					for (size_t l = 0;  l < dim ; l++){
+						dx.x[l] = stepsize*(rngGod.RandomDouble()-0.5);
+					}
+					GeometryVector prevCart = result.GetCartesianCoordinates(k);
+					GeometryVector afterCart = prevCart + dx ;
+
+					double dE = pCCPot -> TryMove( prevCart, afterCart);
+					bool accept = (dE < 0.0) || (rngGod.RandomDouble() < std::exp(-dE/T_curr));
+					if (accept){
+						pCCPot->AcceptMove();
+						/* update coordinates */
+						GeometryVector afterRelative = result.CartesianCoord2RelativeCoord(afterCart);
+						result.MoveParticle(k, afterRelative);
+						E_curr += dE;
+					}
+				}
+			}
+
+			ofile << "E_relax="<< E_curr << "\n";
+			AfterRelaxPack.AddConfig(result);
+			if (E_curr < tolerance ){
+				ofile << "Add to success pack\n";
+				SuccessPack.AddConfig(result);
+			}
+
+		}
+		
+	}
+
+
+	delete pCCPot;
+
+
+}
+
+// int CollectiveCoordinateMD(Configuration * pConfig, Potential * pPotential, RandomGenerator & gen, double TimeStep, double Temperature, std::string Prefix, size_t SampleNumber, size_t StepPerSample, bool AllowRestore, time_t TimeLimit, size_t EquilibrateSamples, bool MDAutoTimeStep);
+
 
 
 int main(int argc, char ** argv){
@@ -525,6 +970,10 @@ int main(int argc, char ** argv){
 	RandomGenerator rngGod(0), rng(0);
 	{
 		GetCCO(argc, argv);
+	}
+	return 0;
+	{
+		MC_CCO(argc, argv);
 	}
 	return 0;
 	{
@@ -805,4 +1254,14 @@ int CollectiveCoordinateMD(Configuration * pConfig, Potential * pPotential, Rand
 	delete psystem;
 
 	return 0;
+}
+
+double getK(double chi, double rho, DimensionType d)
+{
+	return 2*pi *std::pow(2*d*rho*chi/HyperSphere_Volume(d,1.0), 1./d);
+}
+
+double get_chi(double K, double rho, DimensionType d)
+{
+	return HyperSphere_Volume(d, K) /(2*d*std::pow(2*pi,d)) /rho;
 }

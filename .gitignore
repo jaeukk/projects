@@ -15,9 +15,15 @@ QC/QC.out
 
 CCOptimization/*.out
 CCOptimization/log*
+CCOptimization/*ConfigPack*
+CCOptimization/*log
 
 */.vscode/*
 .vscode
 PairStat/test/3D_TJ_5000_unitDiameter.ConfigPack
 PairStat/test/3D_TJ_5000_unitDiameter.ConfigPackIndex
 PairStat/test/Z_test.sh
+
+weighted/log*
+weighted/*.out
+weighted/*.sh

@@ -53,7 +53,7 @@ ODIR = ./obj/# object directory
 EXEdir = ./# directory for executables
 
 #	Executable
-TARGET = $(EXEdir)CCO.out
+TARGET = ./MC.out #$(EXEdir)CCO.out
 
 #----- Flags and libraries -----
 GSLLIB = -L/home/jaeukk/lib/gsl/lib -lgsl -lgslcblas
@@ -77,6 +77,7 @@ objs_core = RandomGenerator.o etc.o GeometryVector.o PeriodicCellList.o
 objs_pair = StructureFactor.o PairCorrelation.o
 objs_pot = Potential.o StructureOptimization.o MD_System.o
 objs_main = main.o
+#objs_MC = MonteCarlo.o
 
 DEPS = $(core)GeometryVector.h $(core)RandomGenerator.h $(core)etc.h $(core)PeriodicCellList.h \
 $(pair)StructureFactor.h $(pair)PairCorrelation.h \
